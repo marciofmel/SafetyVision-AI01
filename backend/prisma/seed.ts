@@ -7,26 +7,26 @@ async function main() {
   console.log('Seeding SafetyVision AI...');
 
   // Usuário admin
-  const senhaHash = await bcrypt.hash('Admin@123', 10);
+  const adminHash = await bcrypt.hash('Admin@123', 10);
   const admin = await prisma.user.upsert({
     where: { email: 'admin@safetyvision.com' },
     update: {},
-    create: { nome: 'Administrador', email: 'admin@safetyvision.com', senhaHash, cargo: 'Admin' },
+    create: { nome: 'Administrador', email: 'admin@safetyvision.com', senhaHash: adminHash, cargo: 'Admin' },
   });
-  console.log(`Admin: ${admin.email}`);
+  console.log(`Admin: ${admin.email} (cargo: ${admin.cargo})`);
 
-  // Usuário técnico de teste
-  const techSenhaHash = await bcrypt.hash('Tecnico@123', 10);
+  // Usuário técnico
+  const techHash = await bcrypt.hash('Tecnico@123', 10);
   const tecnico = await prisma.user.upsert({
     where: { email: 'tecnico@safetyvision.com' },
     update: {},
-    create: { nome: 'João Técnico', email: 'tecnico@safetyvision.com', senhaHash: techSenhaHash, cargo: 'Técnico' },
+    create: { nome: 'João Técnico', email: 'tecnico@safetyvision.com', senhaHash: techHash, cargo: 'Tecnico' },
   });
-  console.log(`Técnico: ${tecnico.email}`);
+  console.log(`Técnico: ${tecnico.email} (cargo: ${tecnico.cargo})`);
 
-  // Empresas de exemplo
-  const emp1 = await prisma.empresa.create({ data: { nome: 'Construtora ABC', cnpj: '12.345.678/0001-90', endereco: 'Rua das Obras, 100', telefone: '(11) 3333-4444', email: 'contato@abc.com' } });
-  const emp2 = await prisma.empresa.create({ data: { nome: 'Indústria XYZ', cnpj: '98.765.432/0001-10', endereco: 'Av. Industrial, 500', telefone: '(11) 5555-6666', email: 'seguranca@xyz.com' } });
+  // Empresas
+  const emp1 = await prisma.empresa.create({ data: { nome: 'Construtora ABC Ltda', cnpj: '12345678000190', endereco: 'Rua das Obras, 100 - São Paulo - SP', telefone: '(11) 3333-4444', email: 'contato@abc.com' } });
+  const emp2 = await prisma.empresa.create({ data: { nome: 'Indústria XYZ S.A.', cnpj: '98765432000110', endereco: 'Av. Industrial, 500 - Campinas - SP', telefone: '(11) 5555-6666', email: 'seguranca@xyz.com' } });
 
   // Setores
   await prisma.setor.createMany({ data: [

@@ -11,9 +11,10 @@ import analiseRoutes from './routes/analise';
 import relatorioRoutes from './routes/relatorio';
 import usuariosRoutes from './routes/usuarios';
 import colaboradoresRoutes from './routes/colaboradores';
+import cnpjRoutes from './routes/cnpj';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5173;
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 app.use(express.json());
@@ -25,8 +26,9 @@ app.use('/api/setores', authMiddleware, setoresRoutes);
 app.use('/api/inspecoes', authMiddleware, inspecoesRoutes);
 app.use('/api/analise', authMiddleware, analiseRoutes);
 app.use('/api/relatorio', authMiddleware, relatorioRoutes);
-app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/usuarios', authMiddleware, usuariosRoutes);
 app.use('/api/colaboradores', authMiddleware, colaboradoresRoutes);
+app.use('/api/cnpj', cnpjRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

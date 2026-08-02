@@ -25,8 +25,10 @@ function PrivateRoute({ children, requiredRole }: { children: React.ReactNode; r
   const { user, loading } = useAuth();
   if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
   if (!user) return <Navigate to="/admin/login" />;
-  if (requiredRole && user.cargo !== requiredRole) {
-    return <Navigate to={user.cargo === 'Admin' ? '/admin' : '/tecnico'} />;
+  if (requiredRole) {
+    const isAdmin = user.cargo === 'Admin' || user.cargo === 'Administrador';
+    if (requiredRole === 'Admin' && !isAdmin) return <Navigate to="/tecnico" />;
+    if (requiredRole === 'Tecnico' && isAdmin) return <Navigate to="/admin" />;
   }
   return <>{children}</>;
 }
@@ -34,7 +36,10 @@ function PrivateRoute({ children, requiredRole }: { children: React.ReactNode; r
 function LandingRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
-  if (user) return <Navigate to={user.cargo === 'Admin' ? '/admin' : '/tecnico'} />;
+  if (user) {
+    const isAdmin = user.cargo === 'Admin' || user.cargo === 'Administrador';
+    return <Navigate to={isAdmin ? '/admin' : '/tecnico'} />;
+  }
   return <Navigate to="/admin/login" />;
 }
 

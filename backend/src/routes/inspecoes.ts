@@ -21,12 +21,17 @@ const router = Router();
 
 router.get('/', async (req: AuthRequest, res) => {
   const { empresaId, setorId } = req.query;
-  const where: any = { usuarioId: req.userId };
+  const user = await prisma.user.findUnique({ where: { id: req.userId! }, select: { cargo: true } });
+  const isAdmin = user?.cargo === 'Admin' || user?.cargo === 'Administrador';
+
+  const where: any = {};
+  if (!isAdmin) where.usuarioId = req.userId;
   if (empresaId) where.empresaId = empresaId as string;
   if (setorId) where.setorId = setorId as string;
+
   const inspecoes = await prisma.inspecao.findMany({
     where,
-    include: { empresa: true, setor: true, _count: { select: { midias: true, riscos: true, epiViolacoes: true } } },
+    include: { empresa: true, setor: true, usuario: { select: { nome: true, email: true } }, _count: { select: { midias: true, riscos: true, epiViolacoes: true } } },
     orderBy: { createdAt: 'desc' },
   });
   res.json(inspecoes);
@@ -43,10 +48,10 @@ router.get('/:id', async (req: AuthRequest, res) => {
 });
 
 router.post('/', async (req: AuthRequest, res) => {
-  const { empresaId, setorId } = req.body;
+  const { empresaId, setorId, observacoes } = req.body;
   if (!empresaId || !setorId) return res.status(400).json({ error: 'Empresa e setor são obrigatórios' });
   const inspecao = await prisma.inspecao.create({
-    data: { empresaId, setorId, usuarioId: req.userId! },
+    data: { empresaId, setorId, usuarioId: req.userId!, observacoes },
     include: { empresa: true, setor: true },
   });
   res.status(201).json(inspecao);

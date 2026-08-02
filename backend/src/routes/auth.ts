@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.post('/register', async (req, res) => {
     }
     const senhaHash = await bcrypt.hash(senha, 10);
     const user = await prisma.user.create({
-      data: { nome, email, senhaHash, cargo: cargo || 'Técnico' },
+      data: { nome, email, senhaHash, cargo: cargo || 'Tecnico' },
     });
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: '7d' });
     res.status(201).json({
@@ -53,7 +54,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/me', async (req: any, res) => {
+router.get('/me', authMiddleware, async (req: any, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
