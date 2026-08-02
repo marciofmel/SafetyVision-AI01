@@ -5,8 +5,8 @@ import { FiShield, FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function LoginAdmin() {
-  const [email, setEmail] = useState('admin@safetyvision.com');
-  const [senha, setSenha] = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login, user } = useAuth();
@@ -80,9 +80,11 @@ export default function LoginAdmin() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full bg-amber-500 hover:bg-amber-600 text-navy-900">
-              {loading ? <div className="h-5 w-5 animate-spin rounded-full border-2 border-navy-900 border-t-transparent" /> : 'Entrar no Admin'}
-            </button>
+            {email === 'admin@safetyvision.com' && (
+              <button type="submit" disabled={loading} className="btn-primary w-full bg-amber-500 hover:bg-amber-600 text-navy-900">
+                {loading ? <div className="h-5 w-5 animate-spin rounded-full border-2 border-navy-900 border-t-transparent" /> : 'Entrar no Admin'}
+              </button>
+            )}
           </form>
 
           <div className="mt-6 text-center">
@@ -95,8 +97,8 @@ export default function LoginAdmin() {
           </div>
 
           <div className="mt-8 rounded-xl border border-navy-100 bg-white p-4">
-            <p className="mb-1 text-xs font-semibold text-navy-400">Credenciais Admin</p>
-            <p className="text-xs text-navy-600">admin@safetyvision.com / Admin@123</p>
+            <p className="mb-1 text-xs font-semibold text-navy-400">Dica</p>
+            <p className="text-xs text-navy-600">Digite o email do administrador para acessar</p>
           </div>
         </div>
       </div>
