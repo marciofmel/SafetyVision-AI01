@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiShield, FiCheck, FiX, FiFileText } from 'react-icons/fi';
+import { FiAlertTriangle, FiShield, FiCheck, FiX, FiFileText, FiLoader } from 'react-icons/fi';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -9,15 +9,12 @@ export default function AnaliseIA() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [resultado, setResultado] = useState<any>(null);
-  const [inspecao, setInspecao] = useState<any>(null);
 
   useEffect(() => {
     const analisar = async () => {
       try {
         const { data } = await api.post(`/analise/${id}/analisar`);
         setResultado(data);
-        const { data: insp } = await api.get(`/inspecoes/${id}`);
-        setInspecao(insp);
       } catch (err: any) {
         toast.error(err.response?.data?.error || 'Erro na análise');
       } finally {
@@ -30,58 +27,89 @@ export default function AnaliseIA() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary-500 border-t-transparent" />
-        <p className="mt-4 text-lg font-semibold text-gray-700">Analisando com IA...</p>
-        <p className="text-sm text-gray-500">Processando fotos e identificando riscos</p>
+        <div className="relative">
+          <div className="h-20 w-20 animate-spin rounded-full border-4 border-navy-200 border-t-amber-500" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FiLoader className="animate-pulse text-navy-400" size={24} />
+          </div>
+        </div>
+        <p className="mt-6 text-lg font-bold text-navy-900">Analisando com IA...</p>
+        <p className="mt-1 text-sm text-navy-400">Processando fotos e identificando riscos</p>
+        <div className="mt-4 flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-2 w-2 animate-bounce rounded-full bg-amber-500" style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
       </div>
     );
   }
 
-  if (!resultado) return <div className="text-center text-gray-500">Erro na análise</div>;
+  if (!resultado) return <div className="text-center text-navy-500">Erro na análise</div>;
 
   const gravidadeColor: Record<string, string> = {
-    crítica: 'bg-red-100 text-red-700 border-red-200',
+    crítica: 'bg-danger-100 text-danger-700 border-danger-200',
     alta: 'bg-orange-100 text-orange-700 border-orange-200',
-    média: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    baixa: 'bg-green-100 text-green-700 border-green-200',
+    média: 'bg-amber-100 text-amber-700 border-amber-200',
+    baixa: 'bg-success-100 text-success-700 border-success-200',
+  };
+
+  const gravidadeIcon: Record<string, string> = {
+    crítica: '🔴',
+    alta: '🟠',
+    média: '🟡',
+    baixa: '🟢',
   };
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">Resultado da Análise IA</h1>
-      <p className="mb-6 text-sm text-gray-500">Inspeção analisada automaticamente por inteligência artificial</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold text-navy-900">Resultado da Análise</h1>
+        <p className="mt-1 text-sm text-navy-500">Análise automática por inteligência artificial</p>
+      </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-primary-600">{resultado.totalMidias}</p>
-          <p className="text-xs text-gray-500">Fotos/Vídeos</p>
-        </div>
-        <div className="rounded-xl border bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-danger-600">{resultado.riscosEncontrados}</p>
-          <p className="text-xs text-gray-500">Riscos</p>
-        </div>
-        <div className="rounded-xl border bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-warning-600">{resultado.epiViolacoes}</p>
-          <p className="text-xs text-gray-500">EPIs Ausentes</p>
-        </div>
-        <div className="rounded-xl border bg-white p-4 text-center shadow-sm">
-          <p className={`text-2xl font-bold ${resultado.notaConformidade >= 70 ? 'text-success-500' : resultado.notaConformidade >= 40 ? 'text-warning-500' : 'text-danger-600'}`}>{resultado.notaConformidade}/100</p>
-          <p className="text-xs text-gray-500">Nota Conformidade</p>
-        </div>
+      {/* Stats */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {[
+          { label: 'Fotos/Vídeos', value: resultado.totalMidias, color: 'bg-navy-900 text-amber-400' },
+          { label: 'Riscos', value: resultado.riscosEncontrados, color: 'bg-danger-600 text-white' },
+          { label: 'EPIs Ausentes', value: resultado.epiViolacoes, color: 'bg-amber-500 text-navy-900' },
+          { label: 'Nota', value: `${resultado.notaConformidade}/100`, color: resultado.notaConformidade >= 70 ? 'bg-success-600 text-white' : resultado.notaConformidade >= 40 ? 'bg-amber-500 text-navy-900' : 'bg-danger-600 text-white' },
+        ].map((s) => (
+          <div key={s.label} className={`${s.color} rounded-2xl p-5 text-center shadow-lg`}>
+            <p className="text-3xl font-extrabold">{s.value}</p>
+            <p className="mt-1 text-sm opacity-80">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* EPIs */}
       {resultado.epiViolacoesList?.length > 0 && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><FiShield /> Análise de EPIs</h2>
+        <div className="card mb-6 p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy-900 text-amber-400">
+              <FiShield size={18} />
+            </div>
+            <h2 className="text-lg font-bold text-navy-900">Análise de EPIs</h2>
+          </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {resultado.epiViolacoesList.map((epi: any, i: number) => (
-              <div key={i} className={`flex items-center justify-between rounded-lg border p-3 ${epi.status === 'ausente' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-                <div className="flex items-center gap-2">
-                  {epi.status === 'ausente' ? <FiX className="text-red-500" /> : <FiCheck className="text-green-500" />}
-                  <span className="text-sm font-medium">{epi.epiNome}</span>
+              <div
+                key={i}
+                className={`flex items-center justify-between rounded-xl border-2 p-3 ${
+                  epi.status === 'ausente'
+                    ? 'border-danger-200 bg-danger-50'
+                    : 'border-success-200 bg-success-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    epi.status === 'ausente' ? 'bg-danger-500 text-white' : 'bg-success-500 text-white'
+                  }`}>
+                    {epi.status === 'ausente' ? <FiX size={14} /> : <FiCheck size={14} />}
+                  </div>
+                  <span className="text-sm font-semibold text-navy-900">{epi.epiNome}</span>
                 </div>
-                <span className="text-xs text-gray-500">{(epi.confianca * 100).toFixed(0)}%</span>
+                <span className="text-xs font-bold text-navy-400">{(epi.confianca * 100).toFixed(0)}%</span>
               </div>
             ))}
           </div>
@@ -90,22 +118,39 @@ export default function AnaliseIA() {
 
       {/* Riscos */}
       {resultado.riscos?.length > 0 && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold"><FiAlertTriangle /> Riscos Identificados</h2>
+        <div className="card mb-6 p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger-600 text-white">
+              <FiAlertTriangle size={18} />
+            </div>
+            <h2 className="text-lg font-bold text-navy-900">Riscos Identificados</h2>
+          </div>
           <div className="space-y-4">
             {resultado.riscos.map((risco: any, i: number) => (
-              <div key={i} className="rounded-lg border border-gray-200 p-4">
-                <div className="mb-2 flex items-start justify-between">
-                  <h3 className="font-semibold text-gray-900">{risco.descricao}</h3>
-                  <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${gravidadeColor[risco.gravidade] || ''}`}>{risco.gravidade.toUpperCase()}</span>
+              <div key={i} className="rounded-xl border-2 border-navy-100 p-5 transition-all hover:border-amber-200">
+                <div className="mb-3 flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{gravidadeIcon[risco.gravidade] || '⚪'}</span>
+                    <h3 className="font-bold text-navy-900">{risco.descricao}</h3>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-bold ${gravidadeColor[risco.gravidade] || ''}`}>
+                    {risco.gravidade.toUpperCase()}
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 md:grid-cols-2">
-                  <p><strong>Categoria:</strong> {risco.categoria}</p>
-                  <p><strong>Confiança:</strong> {(risco.confianca * 100).toFixed(0)}%</p>
-                  <p><strong>Consequências:</strong> {risco.consequencias}</p>
-                  <p><strong>NRs:</strong> {risco.nrsRelacionadas}</p>
-                  <p><strong>Prevenção:</strong> {risco.medidasPreventivas}</p>
-                  <p><strong>Correção:</strong> {risco.medidasCorretivas}</p>
+                <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                  {[
+                    { label: 'Categoria', value: risco.categoria },
+                    { label: 'Confiança', value: `${(risco.confianca * 100).toFixed(0)}%` },
+                    { label: 'Consequências', value: risco.consequencias },
+                    { label: 'NRs', value: risco.nrsRelacionadas },
+                    { label: 'Prevenção', value: risco.medidasPreventivas },
+                    { label: 'Correção', value: risco.medidasCorretivas },
+                  ].map((field) => (
+                    <div key={field.label}>
+                      <p className="text-xs font-bold text-navy-400">{field.label}</p>
+                      <p className="text-navy-700">{field.value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -113,8 +158,9 @@ export default function AnaliseIA() {
         </div>
       )}
 
-      <button onClick={() => navigate(`/relatorio/${id}`)} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 py-3 text-sm font-semibold text-white hover:bg-primary-700">
-        <FiFileText /> Gerar Relatório PDF
+      <button onClick={() => navigate(`/relatorio/${id}`)} className="btn-primary w-full py-4 text-base">
+        <FiFileText size={18} />
+        Gerar Relatório PDF
       </button>
     </div>
   );

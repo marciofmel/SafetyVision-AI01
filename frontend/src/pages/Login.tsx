@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiShield, FiMail, FiLock, FiUser } from 'react-icons/fi';
+import { FiShield, FiMail, FiLock, FiUser, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export default function Login() {
@@ -10,6 +10,7 @@ export default function Login() {
   const [nome, setNome] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -19,6 +20,7 @@ export default function Login() {
     try {
       if (isRegister) {
         await register({ nome, email, senha });
+        toast.success('Conta criada com sucesso!');
       } else {
         await login(email, senha);
       }
@@ -31,51 +33,143 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-600 to-primary-900 px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-white"><FiShield size={32} /></div>
-          <h1 className="mt-4 text-3xl font-bold text-white">SafetyVision AI</h1>
-          <p className="mt-1 text-sm text-white/70">Segurança e Saúde no Trabalho com IA</p>
+    <div className="flex min-h-screen">
+      {/* Lado esquerdo - Branding */}
+      <div className="hidden w-1/2 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+        <div className="max-w-md text-center">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-amber-500/20 backdrop-blur-sm">
+            <FiShield className="text-amber-400" size={48} />
+          </div>
+          <h1 className="mb-4 text-4xl font-extrabold text-white">
+            Safety<span className="text-amber-400">Vision</span> AI
+          </h1>
+          <p className="mb-8 text-lg text-navy-300">
+            Inteligência Artificial aplicada à Segurança e Saúde no Trabalho
+          </p>
+          <div className="grid grid-cols-3 gap-6">
+            {[
+              { value: '99%', label: 'Precisão' },
+              { value: '<5s', label: 'Análise' },
+              { value: '24/7', label: 'Disponível' },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl bg-white/5 p-4 backdrop-blur-sm">
+                <p className="text-2xl font-bold text-amber-400">{s.value}</p>
+                <p className="text-xs text-navy-300">{s.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-8 shadow-xl">
-          <h2 className="mb-6 text-xl font-semibold text-gray-900">{isRegister ? 'Criar Conta' : 'Entrar'}</h2>
-          {isRegister && (
-            <div className="mb-4">
-              <label className="mb-1 block text-sm font-medium text-gray-700">Nome</label>
+      </div>
+
+      {/* Lado direito - Formulário */}
+      <div className="flex w-full items-center justify-center bg-navy-50 p-8 lg:w-1/2">
+        <div className="w-full max-w-md">
+          {/* Logo mobile */}
+          <div className="mb-8 flex items-center gap-3 lg:hidden">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-navy-900">
+              <FiShield className="text-amber-400" size={24} />
+            </div>
+            <span className="text-xl font-bold text-navy-900">SafetyVision</span>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-navy-900">
+              {isRegister ? 'Criar sua conta' : 'Bem-vindo de volta'}
+            </h2>
+            <p className="mt-2 text-sm text-navy-500">
+              {isRegister
+                ? 'Preencha os dados para começar'
+                : 'Entre com suas credenciais para acessar o painel'}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isRegister && (
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-navy-700">Nome completo</label>
+                <div className="relative">
+                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-300" />
+                  <input
+                    type="text"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    required
+                    className="input-field pl-11"
+                    placeholder="João Silva"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-navy-700">E-mail</label>
               <div className="relative">
-                <FiUser className="absolute left-3 top-3 text-gray-400" />
-                <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100" placeholder="Seu nome" />
+                <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-300" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="input-field pl-11"
+                  placeholder="seu@email.com"
+                />
               </div>
             </div>
-          )}
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-gray-700">E-mail</label>
-            <div className="relative">
-              <FiMail className="absolute left-3 top-3 text-gray-400" />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100" placeholder="seu@email.com" />
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-navy-700">Senha</label>
+              <div className="relative">
+                <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-300" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  required
+                  minLength={6}
+                  className="input-field pl-11 pr-11"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-500"
+                >
+                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="mb-6">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Senha</label>
-            <div className="relative">
-              <FiLock className="absolute left-3 top-3 text-gray-400" />
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required minLength={6} className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100" placeholder="••••••••" />
-            </div>
-          </div>
-          <button type="submit" disabled={loading} className="w-full rounded-lg bg-primary-600 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
-            {loading ? 'Carregando...' : isRegister ? 'Criar Conta' : 'Entrar'}
-          </button>
-          <p className="mt-4 text-center text-sm text-gray-500">
-            {isRegister ? 'Já tem conta?' : 'Não tem conta?'}{' '}
-            <button type="button" onClick={() => setIsRegister(!isRegister)} className="font-medium text-primary-600 hover:underline">
-              {isRegister ? 'Entrar' : 'Criar conta'}
+
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-navy-900 border-t-transparent" />
+              ) : isRegister ? (
+                'Criar conta'
+              ) : (
+                'Entrar'
+              )}
             </button>
-          </p>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-navy-500">
+              {isRegister ? 'Já tem conta?' : 'Não tem conta?'}{' '}
+              <button
+                type="button"
+                onClick={() => setIsRegister(!isRegister)}
+                className="font-semibold text-amber-600 hover:text-amber-700"
+              >
+                {isRegister ? 'Entrar' : 'Criar conta grátis'}
+              </button>
+            </p>
+          </div>
+
           {!isRegister && (
-            <p className="mt-2 text-center text-xs text-gray-400">Admin: admin@safetyvision.com / Admin@123</p>
+            <div className="mt-8 rounded-xl border border-navy-100 bg-white p-4">
+              <p className="mb-1 text-xs font-semibold text-navy-400">Credenciais de teste</p>
+              <p className="text-xs text-navy-600">admin@safetyvision.com / Admin@123</p>
+            </div>
           )}
-        </form>
+        </div>
       </div>
     </div>
   );
