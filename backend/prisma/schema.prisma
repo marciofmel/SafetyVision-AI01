@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  nome          String
+  email         String    @unique
+  senhaHash     String
+  cargo         String    @default("Técnico")
+  ativo         Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  inspecoes     Inspecao[]
+}
+
+model Empresa {
+  id        String    @id @default(cuid())
+  nome      String
+  cnpj      String?
+  endereco  String?
+  telefone  String?
+  email     String?
+  ativo     Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  setores   Setor[]
+  inspecoes Inspecao[]
+}
+
+model Setor {
+  id        String      @id @default(cuid())
+  nome      String
+  descricao String?
+  empresaId String
+  empresa   Empresa     @relation(fields: [empresaId], references: [id])
+  ativo     Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  inspecoes Inspecao[]
+  collabors Colaborador[]
+}
+
+model Colaborador {
+  id        String   @id @default(cuid())
+  nome      String
+  cargo     String?
+  setorId   String?
+  setor     Setor?   @relation(fields: [setorId], references: [id])
+  empresaId String
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Inspecao {
+  id              String    @id @default(cuid())
+  empresaId       String
+  setorId         String
+  usuarioId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  setor           Setor     @relation(fields: [setorId], references: [id])
+  usuario         User      @relation(fields: [usuarioId], references: [id])
+  status          String    @default("em_andamento")
+  dataInicio      DateTime  @default(now())
+  dataFim         DateTime?
+  totalFotos      Int       @default(0)
+  totalVideos     Int       @default(0)
+  notaConformidade Float?
+  observacoes     String?
+  createdAt       DateTime  @default(now())
+  midias          Midia[]
+  riscos          Risco[]
+  epiViolacoes    EpiViolacao[]
+}
+
+model Midia {
+  id         String    @id @default(cuid())
+  inspecaoId String
+  inspecao   Inspecao  @relation(fields: [inspecaoId], references: [id])
+  tipo       String
+  url        String
+  nome       String
+  descricao  String?
+  createdAt  DateTime  @default(now())
+}
+
+model Risco {
+  id              String    @id @default(cuid())
+  inspecaoId      String
+  inspecao        Inspecao  @relation(fields: [inspecaoId], references: [id])
+  categoria       String
+  descricao       String
+  localIdentificado String
+  imagemUrl       String?
+  confianca       Float
+  gravidade       String
+  consequencias   String
+  nrsRelacionadas String?
+  medidasPreventivas String
+  medidasCorretivas  String
+  prioridade      String
+  status          String    @default("aberto")
+  createdAt       DateTime  @default(now())
+}
+
+model EpiViolacao {
+  id         String    @id @default(cuid())
+  inspecaoId String
+  inspecao   Inspecao  @relation(fields: [inspecaoId], references: [id])
+  epiNome    String
+  status     String
+  confianca  Float
+  descricao  String?
+  imagemUrl  String?
+  createdAt  DateTime  @default(now())
+}

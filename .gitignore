@@ -1,0 +1,12 @@
+node_modules/
+dist/
+backend/frontend/
+backend/dev.db
+backend/dev.db-journal
+backend/uploads/
+.env
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+relatorio-teste.pdf
