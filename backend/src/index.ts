@@ -9,6 +9,8 @@ import setoresRoutes from './routes/setores';
 import inspecoesRoutes from './routes/inspecoes';
 import analiseRoutes from './routes/analise';
 import relatorioRoutes from './routes/relatorio';
+import usuariosRoutes from './routes/usuarios';
+import colaboradoresRoutes from './routes/colaboradores';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,6 +25,8 @@ app.use('/api/setores', authMiddleware, setoresRoutes);
 app.use('/api/inspecoes', authMiddleware, inspecoesRoutes);
 app.use('/api/analise', authMiddleware, analiseRoutes);
 app.use('/api/relatorio', authMiddleware, relatorioRoutes);
+app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/colaboradores', authMiddleware, colaboradoresRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

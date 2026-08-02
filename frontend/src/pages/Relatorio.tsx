@@ -25,7 +25,7 @@ export default function Relatorio() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/" className="mb-6 inline-flex items-center gap-1 text-sm font-semibold text-navy-500 hover:text-navy-700">
+      <Link to="/tecnico" className="mb-6 inline-flex items-center gap-1 text-sm font-semibold text-navy-500 hover:text-navy-700">
         <FiArrowLeft size={14} /> Voltar ao Dashboard
       </Link>
 

@@ -11,9 +11,18 @@ async function main() {
   const admin = await prisma.user.upsert({
     where: { email: 'admin@safetyvision.com' },
     update: {},
-    create: { nome: 'Administrador', email: 'admin@safetyvision.com', senhaHash, cargo: 'Administrador' },
+    create: { nome: 'Administrador', email: 'admin@safetyvision.com', senhaHash, cargo: 'Admin' },
   });
   console.log(`Admin: ${admin.email}`);
+
+  // Usuário técnico de teste
+  const techSenhaHash = await bcrypt.hash('Tecnico@123', 10);
+  const tecnico = await prisma.user.upsert({
+    where: { email: 'tecnico@safetyvision.com' },
+    update: {},
+    create: { nome: 'João Técnico', email: 'tecnico@safetyvision.com', senhaHash: techSenhaHash, cargo: 'Técnico' },
+  });
+  console.log(`Técnico: ${tecnico.email}`);
 
   // Empresas de exemplo
   const emp1 = await prisma.empresa.create({ data: { nome: 'Construtora ABC', cnpj: '12.345.678/0001-90', endereco: 'Rua das Obras, 100', telefone: '(11) 3333-4444', email: 'contato@abc.com' } });

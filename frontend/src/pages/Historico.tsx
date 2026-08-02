@@ -125,7 +125,7 @@ export default function Historico() {
                   {insp.status !== 'em_andamento' && (
                     <>
                       <Link
-                        to={`/analise/${insp.id}`}
+                        to={`/tecnico/analise/${insp.id}`}
                         className="rounded-lg border border-navy-200 p-2 text-navy-500 transition-all hover:border-navy-300 hover:bg-navy-50"
                         title="Ver análise"
                       >

@@ -158,7 +158,7 @@ export default function AnaliseIA() {
         </div>
       )}
 
-      <button onClick={() => navigate(`/relatorio/${id}`)} className="btn-primary w-full py-4 text-base">
+      <button onClick={() => navigate(`/tecnico/relatorio/${id}`)} className="btn-primary w-full py-4 text-base">
         <FiFileText size={18} />
         Gerar Relatório PDF
       </button>

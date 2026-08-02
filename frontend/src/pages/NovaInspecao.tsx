@@ -51,7 +51,7 @@ export default function NovaInspecao() {
       files.forEach((f) => formData.append('files', f));
       await api.post(`/inspecoes/${inspecao.id}/midias`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success('Inspeção criada! Analisando com IA...');
-      navigate(`/analise/${inspecao.id}`);
+      navigate(`/tecnico/analise/${inspecao.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao criar inspeção');
     } finally {
