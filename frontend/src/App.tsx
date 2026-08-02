@@ -12,6 +12,10 @@ import AdminLayout from './components/AdminLayout';
 
 import LoginTecnico from './pages/tecnico/LoginTecnico';
 import DashboardTecnico from './pages/tecnico/DashboardTecnico';
+import EmpresasTecnico from './pages/tecnico/EmpresasTecnico';
+import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
+import NRTecnico from './pages/tecnico/NRTecnico';
+import ConfigTecnico from './pages/tecnico/ConfigTecnico';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
@@ -64,9 +68,13 @@ export default function App() {
       <Route path="/tecnico" element={<PrivateRoute><TecnicoLayout /></PrivateRoute>}>
         <Route index element={<DashboardTecnico />} />
         <Route path="nova-inspecao" element={<NovaInspecao />} />
+        <Route path="empresas" element={<EmpresasTecnico />} />
+        <Route path="colaboradores" element={<ColaboradoresTecnico />} />
         <Route path="analise/:id" element={<AnaliseIA />} />
         <Route path="relatorio/:id" element={<Relatorio />} />
         <Route path="historico" element={<Historico />} />
+        <Route path="nrs" element={<NRTecnico />} />
+        <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />

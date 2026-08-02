@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX } from 'react-icons/fi';
+import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiBriefcase } from 'react-icons/fi';
 
 export default function TecnicoLayout() {
   const { user, logout } = useAuth();
@@ -11,6 +11,8 @@ export default function TecnicoLayout() {
   const links = [
     { to: '/tecnico', icon: <FiHome size={20} />, label: 'Dashboard', end: true },
     { to: '/tecnico/nova-inspecao', icon: <FiPlus size={20} />, label: 'Nova Inspeção' },
+    { to: '/tecnico/empresas', icon: <FiBriefcase size={20} />, label: 'Empresas' },
+    { to: '/tecnico/colaboradores', icon: <FiUser size={20} />, label: 'Colaboradores' },
     { to: '/tecnico/historico', icon: <FiClock size={20} />, label: 'Histórico' },
   ];
 
@@ -51,6 +53,33 @@ export default function TecnicoLayout() {
             {l.label}
           </NavLink>
         ))}
+
+        <p className="mb-3 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-navy-300">Sistema</p>
+        <NavLink
+          to="/tecnico/nrs"
+          onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20' : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+            }`
+          }
+        >
+          <FiAlertTriangle size={20} />
+          <span>NRs Atualizadas</span>
+          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">16</span>
+        </NavLink>
+        <NavLink
+          to="/tecnico/configuracoes"
+          onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20' : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+            }`
+          }
+        >
+          <FiSettings size={20} />
+          <span>Configurações</span>
+        </NavLink>
       </nav>
 
       <div className="border-t border-navy-100 p-4">
@@ -76,24 +105,19 @@ export default function TecnicoLayout() {
 
   return (
     <div className="flex min-h-screen bg-navy-50">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Mobile sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar />
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex">
         <Sidebar />
       </div>
 
-      {/* Main */}
       <div className="flex-1 lg:ml-72">
-        {/* Mobile header */}
         <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-navy-100 bg-white px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-navy-600 hover:bg-navy-100">
             <FiMenu size={20} />
