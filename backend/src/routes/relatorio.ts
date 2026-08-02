@@ -2,6 +2,7 @@ import { Router } from 'express';
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 import prisma from '../prisma';
 
 const router = Router();
@@ -88,7 +89,7 @@ router.get('/:inspecaoId/relatorio', async (req, res) => {
         doc.fontSize(10).font('Helvetica').fillColor('#64748B').text(`Imagem: ${img.midia.nome}`, 50, 62);
 
         try {
-          const imgMeta = await require('sharp')(img.anotadaPath).metadata();
+          const imgMeta = await sharp(img.anotadaPath).metadata();
           const imgW = imgMeta.width || 500;
           const imgH = imgMeta.height || 400;
           const maxWidth = 495;
@@ -201,7 +202,7 @@ router.get('/:inspecaoId/relatorio', async (req, res) => {
         if (!fs.existsSync(imgPath)) continue;
 
         try {
-          const imgMeta = await require('sharp')(imgPath).metadata();
+          const imgMeta = await sharp(imgPath).metadata();
           const imgW = imgMeta.width || 300;
           const imgH = imgMeta.height || 200;
           const maxSize = 230;
