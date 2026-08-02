@@ -11,6 +11,7 @@ import InspecoesAdmin from './pages/admin/InspecoesAdmin';
 import AdminLayout from './components/AdminLayout';
 
 import LoginTecnico from './pages/tecnico/LoginTecnico';
+import CadastroTecnico from './pages/tecnico/CadastroTecnico';
 import DashboardTecnico from './pages/tecnico/DashboardTecnico';
 import EmpresasTecnico from './pages/tecnico/EmpresasTecnico';
 import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
@@ -65,6 +66,7 @@ export default function App() {
       </Route>
 
       <Route path="/tecnico/login" element={<LoginTecnico />} />
+      <Route path="/tecnico/cadastro" element={<CadastroTecnico />} />
       <Route path="/tecnico" element={<PrivateRoute><TecnicoLayout /></PrivateRoute>}>
         <Route index element={<DashboardTecnico />} />
         <Route path="nova-inspecao" element={<NovaInspecao />} />
