@@ -33,17 +33,18 @@ export default function NovaInspecao() {
     }
   }, [empresaId]);
 
-  const handleCnpjLookup = async () => {
-    const clean = cnpj.replace(/[^\d]/g, '');
-    if (clean.length !== 14) return toast.error('CNPJ deve ter 14 dígitos');
+  const handleCnpjLookup = async (value: string) => {
+    const clean = value.replace(/[^\d]/g, '');
+    if (clean.length !== 14) return;
     setCnpjLoading(true);
     try {
-      const { data } = await api.get(`/cnpj/${clean}`);
+      const { data } = await api.get(`/cnpj/${clean}`, { timeout: 30000 });
       setCnpjData(data);
       toast.success('Dados da empresa encontrados!');
       setNovaEmpresa(true);
     } catch (err: any) {
-      toast.error('CNPJ não encontrado. Preencha manualmente.');
+      console.error('CNPJ lookup error:', err);
+      toast.error(err.message?.includes('timeout') ? 'Servidor demorou. Preencha manualmente.' : 'CNPJ não encontrado. Preencha manualmente.');
       setNovaEmpresa(true);
     } finally {
       setCnpjLoading(false);
@@ -52,7 +53,11 @@ export default function NovaInspecao() {
 
   const formatCnpj = (v: string) => {
     const digits = v.replace(/\D/g, '').slice(0, 14);
-    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    const formatted = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    if (digits.length === 14 && cnpj.replace(/[^\d]/g, '').length !== 14) {
+      handleCnpjLookup(digits);
+    }
+    return formatted;
   };
 
   const handleCreateEmpresa = async () => {
@@ -171,7 +176,7 @@ export default function NovaInspecao() {
                 />
               </div>
               <button
-                onClick={handleCnpjLookup}
+                onClick={() => handleCnpjLookup(cnpj)}
                 disabled={cnpjLoading}
                 className="btn-primary bg-navy-900 text-amber-400"
               >

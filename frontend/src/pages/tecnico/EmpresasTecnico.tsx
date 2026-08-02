@@ -16,9 +16,9 @@ export default function EmpresasTecnico() {
   useEffect(() => { load(); }, []);
   const load = () => api.get('/empresas').then(({ data }) => setEmpresas(data)).catch(() => {});
 
-  const handleCnpjLookup = async () => {
-    const clean = cnpj.replace(/[^\d]/g, '');
-    if (clean.length !== 14) return toast.error('CNPJ deve ter 14 dígitos');
+  const handleCnpjLookup = async (value: string) => {
+    const clean = value.replace(/[^\d]/g, '');
+    if (clean.length !== 14) return;
     setCnpjLoading(true);
     try {
       const { data } = await api.get(`/cnpj/${clean}`);
@@ -41,7 +41,11 @@ export default function EmpresasTecnico() {
 
   const formatCnpj = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 14);
-    return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    const formatted = d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    if (d.length === 14 && cnpj.replace(/[^\d]/g, '').length !== 14) {
+      handleCnpjLookup(d);
+    }
+    return formatted;
   };
 
   const handleSave = async (id?: string) => {
@@ -74,7 +78,7 @@ export default function EmpresasTecnico() {
         <h3 className="mb-3 text-sm font-bold text-navy-900">Buscar empresa por CNPJ</h3>
         <div className="flex gap-3">
           <input placeholder="00.000.000/0000-00" value={cnpj} onChange={(e) => setCnpj(formatCnpj(e.target.value))} className="input-field flex-1" maxLength={18} />
-          <button onClick={handleCnpjLookup} disabled={cnpjLoading} className="btn-primary bg-navy-900 text-amber-400">
+          <button onClick={() => handleCnpjLookup(cnpj)} disabled={cnpjLoading} className="btn-primary bg-navy-900 text-amber-400">
             {cnpjLoading ? <FiLoader className="animate-spin" size={16} /> : <FiSearch size={16} />}
             Buscar
           </button>
