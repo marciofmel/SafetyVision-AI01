@@ -166,8 +166,8 @@ export default function TecnicoLayout() {
         {/* Header desktop */}
         <div className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-navy-100 bg-white px-8 lg:flex">
           <div />
-          <div className="relative" ref={menuRef}>
-            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-navy-50 transition-colors">
+          <div className="relative z-50" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-navy-50 transition-colors cursor-pointer">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-amber-400 overflow-hidden">
                 {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
               </div>
@@ -178,16 +178,16 @@ export default function TecnicoLayout() {
               <FiChevronDown size={14} className={`text-navy-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-50">
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-[100]">
                 <div className="px-4 py-3 border-b border-navy-100">
                   <p className="text-sm font-bold text-navy-900">{user?.nome}</p>
                   <p className="text-xs text-navy-400">{user?.email}</p>
                 </div>
-                <button onClick={() => { setMenuOpen(false); navigate('/tecnico/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50 transition-colors">
+                <button onClick={() => { setMenuOpen(false); navigate('/tecnico/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50 transition-colors cursor-pointer">
                   <FiUser size={16} /> Editar Perfil
                 </button>
                 <div className="my-1 border-t border-navy-100" />
-                <button onClick={() => { setMenuOpen(false); logout(); navigate('/tecnico/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors">
+                <button onClick={() => { setMenuOpen(false); logout(); navigate('/tecnico/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors cursor-pointer">
                   <FiLogOut size={16} /> Sair
                 </button>
               </div>
