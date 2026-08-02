@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiBriefcase, FiUsers, FiShield, FiClock, FiSettings, FiLogOut, FiAlertTriangle, FiMenu, FiX } from 'react-icons/fi';
+import { FiHome, FiBriefcase, FiUsers, FiShield, FiClock, FiSettings, FiLogOut, FiAlertTriangle, FiMenu, FiX, FiChevronDown, FiUser } from 'react-icons/fi';
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const links = [
     { to: '/admin', icon: <FiHome size={20} />, label: 'Dashboard', end: true },
@@ -85,8 +95,8 @@ export default function AdminLayout() {
 
       <div className="border-t border-navy-100 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-navy-50 p-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-navy-900">
-            {user?.nome?.charAt(0)?.toUpperCase() || 'A'}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-navy-900 overflow-hidden">
+            {user?.foto ? <img src={user.foto} alt={user.nome} className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase() || 'A'}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy-900">{user?.nome}</p>
@@ -106,25 +116,21 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-navy-50">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Mobile sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar />
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex">
         <Sidebar />
       </div>
 
-      {/* Main */}
       <div className="flex-1 lg:ml-72">
-        {/* Mobile header */}
-        <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-navy-100 bg-white px-4 lg:hidden">
+        {/* Header mobile */}
+        <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-navy-100 bg-white px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-navy-600 hover:bg-navy-100">
             <FiMenu size={20} />
           </button>
@@ -133,6 +139,61 @@ export default function AdminLayout() {
               <FiShield className="text-navy-900" size={14} />
             </div>
             <span className="text-sm font-bold text-navy-900">Admin</span>
+          </div>
+          {/* Avatar mobile */}
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-navy-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-navy-900 overflow-hidden">
+                {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
+              </div>
+              <FiChevronDown size={14} className={`text-navy-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-50">
+                <div className="px-4 py-2 border-b border-navy-100">
+                  <p className="text-sm font-bold text-navy-900 truncate">{user?.nome}</p>
+                  <p className="text-xs text-navy-400 truncate">{user?.email}</p>
+                </div>
+                <button onClick={() => { setMenuOpen(false); navigate('/admin/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50">
+                  <FiUser size={16} /> Editar Perfil
+                </button>
+                <button onClick={() => { setMenuOpen(false); logout(); navigate('/admin/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50">
+                  <FiLogOut size={16} /> Sair
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Header desktop */}
+        <div className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-navy-100 bg-white px-8 lg:flex">
+          <div />
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-navy-50 transition-colors">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-navy-900 overflow-hidden">
+                {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-sm font-semibold text-navy-900">{user?.nome}</p>
+                <p className="text-[10px] text-navy-400">Administrador</p>
+              </div>
+              <FiChevronDown size={14} className={`text-navy-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-50">
+                <div className="px-4 py-3 border-b border-navy-100">
+                  <p className="text-sm font-bold text-navy-900">{user?.nome}</p>
+                  <p className="text-xs text-navy-400">{user?.email}</p>
+                </div>
+                <button onClick={() => { setMenuOpen(false); navigate('/admin/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50 transition-colors">
+                  <FiUser size={16} /> Editar Perfil
+                </button>
+                <div className="my-1 border-t border-navy-100" />
+                <button onClick={() => { setMenuOpen(false); logout(); navigate('/admin/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors">
+                  <FiLogOut size={16} /> Sair
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../api';
 
-interface User { id: string; nome: string; email: string; cargo: string; }
-interface AuthCtx { user: User | null; login: (email: string, senha: string) => Promise<void>; register: (data: any) => Promise<void>; logout: () => void; loading: boolean; }
+interface User { id: string; nome: string; email: string; cargo: string; foto?: string | null; }
+interface AuthCtx { user: User | null; login: (email: string, senha: string) => Promise<void>; register: (data: any) => Promise<void>; logout: () => void; updateUser: (data: Partial<User>) => void; loading: boolean; }
 
 const AuthContext = createContext<AuthCtx>(null!);
 
@@ -30,13 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   };
 
+  const updateUser = (partial: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...partial };
+      localStorage.setItem('sv_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem('sv_token');
     localStorage.removeItem('sv_user');
     setUser(null);
   };
 
-  return <AuthContext.Provider value={{ user, login, register, logout, loading }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, register, logout, updateUser, loading }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

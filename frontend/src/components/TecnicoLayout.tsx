@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiBriefcase } from 'react-icons/fi';
+import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase } from 'react-icons/fi';
 
 export default function TecnicoLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const links = [
     { to: '/tecnico', icon: <FiHome size={20} />, label: 'Dashboard', end: true },
@@ -66,7 +76,7 @@ export default function TecnicoLayout() {
         >
           <FiAlertTriangle size={20} />
           <span>NRs Atualizadas</span>
-          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">16</span>
+          <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">38</span>
         </NavLink>
         <NavLink
           to="/tecnico/configuracoes"
@@ -84,8 +94,8 @@ export default function TecnicoLayout() {
 
       <div className="border-t border-navy-100 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-navy-50 p-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-amber-400">
-            {user?.nome?.charAt(0)?.toUpperCase() || 'T'}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-amber-400 overflow-hidden">
+            {user?.foto ? <img src={user.foto} alt={user.nome} className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase() || 'T'}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-navy-900">{user?.nome}</p>
@@ -118,7 +128,8 @@ export default function TecnicoLayout() {
       </div>
 
       <div className="flex-1 lg:ml-72">
-        <div className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-navy-100 bg-white px-4 lg:hidden">
+        {/* Header mobile */}
+        <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-navy-100 bg-white px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-navy-600 hover:bg-navy-100">
             <FiMenu size={20} />
           </button>
@@ -127,6 +138,60 @@ export default function TecnicoLayout() {
               <FiShield className="text-amber-400" size={14} />
             </div>
             <span className="text-sm font-bold text-navy-900">SafetyVision</span>
+          </div>
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-navy-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-bold text-amber-400 overflow-hidden">
+                {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
+              </div>
+              <FiChevronDown size={14} className={`text-navy-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-50">
+                <div className="px-4 py-2 border-b border-navy-100">
+                  <p className="text-sm font-bold text-navy-900 truncate">{user?.nome}</p>
+                  <p className="text-xs text-navy-400 truncate">{user?.email}</p>
+                </div>
+                <button onClick={() => { setMenuOpen(false); navigate('/tecnico/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50">
+                  <FiUser size={16} /> Editar Perfil
+                </button>
+                <button onClick={() => { setMenuOpen(false); logout(); navigate('/tecnico/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50">
+                  <FiLogOut size={16} /> Sair
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Header desktop */}
+        <div className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-navy-100 bg-white px-8 lg:flex">
+          <div />
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-navy-50 transition-colors">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-amber-400 overflow-hidden">
+                {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-sm font-semibold text-navy-900">{user?.nome}</p>
+                <p className="text-[10px] text-navy-400">Técnico SST</p>
+              </div>
+              <FiChevronDown size={14} className={`text-navy-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-navy-100 bg-white py-2 shadow-xl z-50">
+                <div className="px-4 py-3 border-b border-navy-100">
+                  <p className="text-sm font-bold text-navy-900">{user?.nome}</p>
+                  <p className="text-xs text-navy-400">{user?.email}</p>
+                </div>
+                <button onClick={() => { setMenuOpen(false); navigate('/tecnico/configuracoes'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50 transition-colors">
+                  <FiUser size={16} /> Editar Perfil
+                </button>
+                <div className="my-1 border-t border-navy-100" />
+                <button onClick={() => { setMenuOpen(false); logout(); navigate('/tecnico/login'); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-danger-600 hover:bg-danger-50 transition-colors">
+                  <FiLogOut size={16} /> Sair
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
