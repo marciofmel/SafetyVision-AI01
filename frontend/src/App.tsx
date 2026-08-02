@@ -6,6 +6,8 @@ import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
 import Historico from './pages/Historico';
+import NRsAtualizadas from './pages/NRsAtualizadas';
+import Configuracoes from './pages/Configuracoes';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,8 @@ export default function App() {
         <Route path="analise/:id" element={<AnaliseIA />} />
         <Route path="relatorio/:id" element={<Relatorio />} />
         <Route path="historico" element={<Historico />} />
+        <Route path="nrs" element={<NRsAtualizadas />} />
+        <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
     </Routes>
   );

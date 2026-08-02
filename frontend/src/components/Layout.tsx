@@ -49,15 +49,33 @@ export default function Layout() {
           ))}
 
           <p className="mb-3 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-navy-300">Sistema</p>
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-navy-400">
+          <NavLink
+            to="/nrs"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20'
+                  : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+              }`
+            }
+          >
             <FiAlertTriangle size={20} />
             <span>NRs Atualizadas</span>
             <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">16</span>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-navy-400">
+          </NavLink>
+          <NavLink
+            to="/configuracoes"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20'
+                  : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+              }`
+            }
+          >
             <FiSettings size={20} />
             <span>Configurações</span>
-          </div>
+          </NavLink>
         </nav>
 
         {/* User */}
