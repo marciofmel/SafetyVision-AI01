@@ -1,27 +1,70 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle } from 'react-icons/fi';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiRefreshCw } from 'react-icons/fi';
 import api from '../api';
+import toast from 'react-hot-toast';
 
 export default function Relatorio() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [inspecao, setInspecao] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    api.get(`/inspecoes/${id}`).then(({ data }) => setInspecao(data));
+    api.get(`/inspecoes/${id}`).then(({ data }) => {
+      setInspecao(data);
+      setLoading(false);
+    }).catch(() => {
+      toast.error('Erro ao carregar inspeção');
+      setLoading(false);
+    });
   }, [id]);
 
-  if (!inspecao) {
+  const downloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('sv_token');
+      const response = await fetch(`/api/relatorio/${id}/relatorio`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Erro ao baixar PDF');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-${id?.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('PDF baixado!');
+    } catch (err) {
+      toast.error('Erro ao baixar relatório');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-navy-200 border-t-amber-500" />
+        <div className="flex flex-col items-center">
+          <FiLoader className="animate-spin text-amber-500" size={40} />
+          <p className="mt-4 text-navy-500">Carregando relatório...</p>
+        </div>
       </div>
     );
   }
 
-  const downloadPDF = () => {
-    window.open(`/api/relatorio/${id}/relatorio`, '_blank');
-  };
+  if (!inspecao) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center">
+        <p className="text-navy-500">Inspeção não encontrada</p>
+        <button onClick={() => navigate('/tecnico')} className="mt-4 btn-primary">Voltar</button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -43,8 +86,8 @@ export default function Relatorio() {
         <div className="p-8">
           <div className="mb-6 grid grid-cols-2 gap-4">
             {[
-              { label: 'Empresa', value: inspecao.empresa?.nome },
-              { label: 'Setor', value: inspecao.setor?.nome },
+              { label: 'Empresa', value: inspecao.empresa?.nome || '---' },
+              { label: 'Setor', value: inspecao.setor?.nome || '---' },
               { label: 'Nota', value: `${inspecao.notaConformidade ?? '---'}/100` },
               { label: 'Riscos', value: `${inspecao.riscos?.length || 0} encontrados` },
             ].map((item) => (
@@ -73,9 +116,9 @@ export default function Relatorio() {
             </div>
           </div>
 
-          <button onClick={downloadPDF} className="btn-primary w-full py-4 text-base">
-            <FiDownload size={18} />
-            Baixar Relatório PDF
+          <button onClick={downloadPDF} disabled={downloading} className="btn-primary w-full py-4 text-base disabled:opacity-50">
+            {downloading ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
+            {downloading ? 'Baixando...' : 'Baixar Relatório PDF'}
           </button>
         </div>
       </div>

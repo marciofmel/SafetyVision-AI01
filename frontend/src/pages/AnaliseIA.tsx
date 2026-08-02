@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiShield, FiCheck, FiX, FiFileText, FiLoader } from 'react-icons/fi';
+import { FiAlertTriangle, FiShield, FiCheck, FiX, FiFileText, FiLoader, FiRefreshCw } from 'react-icons/fi';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -9,19 +9,26 @@ export default function AnaliseIA() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [resultado, setResultado] = useState<any>(null);
+  const [error, setError] = useState('');
+
+  const analisar = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post(`/analise/${id}/analisar`);
+      setResultado(data);
+      toast.success('Análise concluída!');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Erro na análise';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const analisar = async () => {
-      try {
-        const { data } = await api.post(`/analise/${id}/analisar`);
-        setResultado(data);
-      } catch (err: any) {
-        toast.error(err.response?.data?.error || 'Erro na análise');
-      } finally {
-        setLoading(false);
-      }
-    };
-    analisar();
+    if (id) analisar();
   }, [id]);
 
   if (loading) {
@@ -44,7 +51,27 @@ export default function AnaliseIA() {
     );
   }
 
-  if (!resultado) return <div className="text-center text-navy-500">Erro na análise</div>;
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center p-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-danger-100">
+          <FiAlertTriangle className="text-danger-600" size={32} />
+        </div>
+        <p className="mt-4 text-lg font-bold text-navy-900">Erro na Análise</p>
+        <p className="mt-1 text-sm text-navy-500">{error}</p>
+        <div className="mt-6 flex gap-3">
+          <button onClick={analisar} className="btn-primary">
+            <FiRefreshCw size={16} /> Tentar Novamente
+          </button>
+          <button onClick={() => navigate('/tecnico')} className="rounded-xl border-2 border-navy-200 px-6 py-3 text-sm font-semibold text-navy-700 hover:bg-navy-50">
+            Voltar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!resultado) return null;
 
   const gravidadeColor: Record<string, string> = {
     crítica: 'bg-danger-100 text-danger-700 border-danger-200',

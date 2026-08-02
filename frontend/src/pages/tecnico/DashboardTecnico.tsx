@@ -1,14 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiPlus, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiCamera, FiArrowRight, FiVideo, FiImage, FiX, FiLoader, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiCamera, FiArrowRight, FiVideo, FiImage, FiX, FiLoader } from 'react-icons/fi';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
 export default function DashboardTecnico() {
   const [stats, setStats] = useState({ total: 0, concluidas: 0, emAndamento: 0, riscos: 0 });
   const [recentes, setRecentes] = useState<any[]>([]);
-  const [showQuick, setShowQuick] = useState(false);
-  const [quickStep, setQuickStep] = useState<'capture' | 'form' | 'uploading'>('capture');
+  const [showPopup, setShowPopup] = useState(false);
   const [capturedFiles, setCapturedFiles] = useState<File[]>([]);
   const [capturedPreviews, setCapturedPreviews] = useState<string[]>([]);
   const [empresas, setEmpresas] = useState<any[]>([]);
@@ -34,10 +33,10 @@ export default function DashboardTecnico() {
   }, []);
 
   useEffect(() => {
-    if (showQuick) {
+    if (showPopup) {
       api.get('/empresas').then(({ data }) => setEmpresas(data)).catch(() => {});
     }
-  }, [showQuick]);
+  }, [showPopup]);
 
   useEffect(() => {
     if (empresaId) {
@@ -54,7 +53,7 @@ export default function DashboardTecnico() {
       reader.onload = (ev) => setCapturedPreviews((prev) => [...prev, ev.target?.result as string]);
       reader.readAsDataURL(file);
     });
-    setQuickStep('form');
+    e.target.value = '';
   };
 
   const removeFile = (index: number) => {
@@ -66,7 +65,6 @@ export default function DashboardTecnico() {
     if (!empresaId || !setorId) return toast.error('Selecione empresa e setor');
     if (capturedFiles.length === 0) return toast.error('Adicione pelo menos um arquivo');
     setUploading(true);
-    setQuickStep('uploading');
     try {
       const { data: inspecao } = await api.post('/inspecoes', { empresaId, setorId });
       const formData = new FormData();
@@ -74,20 +72,26 @@ export default function DashboardTecnico() {
       await api.post(`/inspecoes/${inspecao.id}/midias`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success(`${capturedFiles.length} arquivo(s) enviado(s)!`);
-      setShowQuick(false);
+      toast.success('Arquivos enviados! Analisando...');
+      setShowPopup(false);
       setCapturedFiles([]);
       setCapturedPreviews([]);
       setEmpresaId('');
       setSetorId('');
-      setQuickStep('capture');
       navigate(`/tecnico/analise/${inspecao.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao enviar');
-      setQuickStep('form');
     } finally {
       setUploading(false);
     }
+  };
+
+  const closePopup = () => {
+    setShowPopup(false);
+    setCapturedFiles([]);
+    setCapturedPreviews([]);
+    setEmpresaId('');
+    setSetorId('');
   };
 
   const cards = [
@@ -107,33 +111,34 @@ export default function DashboardTecnico() {
 
   return (
     <div>
-      {/* Quick Inspection Modal */}
-      {showQuick && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      {/* Hidden file inputs */}
+      <input ref={photoRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFiles} className="hidden" />
+      <input ref={videoRef} type="file" accept="video/*" capture="environment" multiple onChange={handleFiles} className="hidden" />
+      <input ref={galleryRef} type="file" accept="image/*,video/*" multiple onChange={handleFiles} className="hidden" />
+
+      {/* Popup Inspeção */}
+      {showPopup && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="w-full max-w-lg rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
             <div className="flex items-center justify-between border-b border-navy-100 px-6 py-4">
-              <h2 className="text-lg font-bold text-navy-900">
-                {quickStep === 'capture' ? 'Nova Inspeção Rápida' : quickStep === 'form' ? 'Dados da Inspeção' : 'Enviando...'}
-              </h2>
-              <button onClick={() => { setShowQuick(false); setCapturedFiles([]); setCapturedPreviews([]); setQuickStep('capture'); }} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100">
+              <h2 className="text-lg font-bold text-navy-900">Nova Inspeção</h2>
+              <button onClick={closePopup} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100">
                 <FiX size={20} />
               </button>
             </div>
 
             <div className="p-6">
-              {quickStep === 'capture' && (
+              {/* Step 1: Capture */}
+              {capturedFiles.length === 0 && (
                 <div className="space-y-3">
-                  <p className="mb-4 text-center text-sm text-navy-500">Capture ou selecione uma mídia para iniciar a inspeção</p>
-                  <input ref={photoRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFiles} className="hidden" />
-                  <input ref={videoRef} type="file" accept="video/*" capture="environment" multiple onChange={handleFiles} className="hidden" />
-                  <input ref={galleryRef} type="file" accept="image/*,video/*" multiple onChange={handleFiles} className="hidden" />
+                  <p className="mb-4 text-center text-sm text-navy-500">Capture ou selecione uma mídia</p>
                   <button onClick={() => photoRef.current?.click()} className="flex w-full items-center gap-4 rounded-xl border-2 border-navy-100 p-5 transition-all hover:border-amber-400 hover:bg-amber-50/50 group">
                     <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-navy-900 text-amber-400 group-hover:bg-amber-500 group-hover:text-navy-900 transition-all">
                       <FiCamera size={28} />
                     </div>
                     <div className="text-left">
                       <p className="text-base font-bold text-navy-900">Tirar Foto</p>
-                      <p className="text-xs text-navy-400">Capture uma foto da área inspecionada</p>
+                      <p className="text-xs text-navy-400">Câmera do celular</p>
                     </div>
                   </button>
                   <button onClick={() => videoRef.current?.click()} className="flex w-full items-center gap-4 rounded-xl border-2 border-navy-100 p-5 transition-all hover:border-amber-400 hover:bg-amber-50/50 group">
@@ -142,7 +147,7 @@ export default function DashboardTecnico() {
                     </div>
                     <div className="text-left">
                       <p className="text-base font-bold text-navy-900">Gravar Vídeo</p>
-                      <p className="text-xs text-navy-400"> Grave um vídeo curto do local</p>
+                      <p className="text-xs text-navy-400">Vídeo curto do local</p>
                     </div>
                   </button>
                   <button onClick={() => galleryRef.current?.click()} className="flex w-full items-center gap-4 rounded-xl border-2 border-navy-100 p-5 transition-all hover:border-amber-400 hover:bg-amber-50/50 group">
@@ -151,36 +156,35 @@ export default function DashboardTecnico() {
                     </div>
                     <div className="text-left">
                       <p className="text-base font-bold text-navy-900">Galeria</p>
-                      <p className="text-xs text-navy-400">Selecione fotos ou vídeos da galeria</p>
+                      <p className="text-xs text-navy-400">Fotos ou vídeos salvos</p>
                     </div>
                   </button>
                 </div>
               )}
 
-              {quickStep === 'form' && (
+              {/* Step 2: Form */}
+              {capturedFiles.length > 0 && (
                 <div className="space-y-4">
-                  {capturedPreviews.length > 0 && (
-                    <div className="mb-4">
-                      <p className="mb-2 text-sm font-bold text-navy-900">{capturedPreviews.length} arquivo(s) selecionado(s)</p>
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {capturedPreviews.map((p, i) => (
-                          <div key={i} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
-                            {p.startsWith('data:video') ? (
-                              <video src={p} className="h-full w-full object-cover" />
-                            ) : (
-                              <img src={p} alt="" className="h-full w-full object-cover" />
-                            )}
-                            <button onClick={() => removeFile(i)} className="absolute right-0.5 top-0.5 rounded-full bg-danger-600 p-0.5 text-white">
-                              <FiX size={10} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <button onClick={() => { setQuickStep('capture'); setCapturedFiles([]); setCapturedPreviews([]); }} className="mt-1 text-xs font-semibold text-amber-600 hover:text-amber-700">
-                        + Adicionar mais
-                      </button>
+                  <div>
+                    <p className="mb-2 text-sm font-bold text-navy-900">{capturedFiles.length} arquivo(s) selecionado(s)</p>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {capturedPreviews.map((p, i) => (
+                        <div key={i} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+                          {p.startsWith('data:video') ? (
+                            <video src={p} className="h-full w-full object-cover" />
+                          ) : (
+                            <img src={p} alt="" className="h-full w-full object-cover" />
+                          )}
+                          <button onClick={() => removeFile(i)} className="absolute right-0.5 top-0.5 rounded-full bg-danger-600 p-0.5 text-white">
+                            <FiX size={10} />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  )}
+                    <button onClick={() => { setCapturedFiles([]); setCapturedPreviews([]); }} className="text-xs font-semibold text-amber-600 hover:text-amber-700">
+                      + Adicionar mais
+                    </button>
+                  </div>
 
                   <div>
                     <label className="mb-1 block text-sm font-semibold text-navy-700">Empresa *</label>
@@ -199,16 +203,9 @@ export default function DashboardTecnico() {
                   </div>
 
                   <button onClick={handleSubmitQuick} disabled={!empresaId || !setorId || uploading} className="btn-primary w-full py-3 text-base disabled:opacity-50">
-                    <FiCamera size={18} /> Enviar e Analisar
+                    {uploading ? <FiLoader className="animate-spin" size={18} /> : <FiCamera size={18} />}
+                    {uploading ? 'Enviando...' : 'Enviar e Analisar'}
                   </button>
-                </div>
-              )}
-
-              {quickStep === 'uploading' && (
-                <div className="flex flex-col items-center py-8">
-                  <FiLoader className="mb-4 animate-spin text-amber-500" size={48} />
-                  <p className="text-lg font-bold text-navy-900">Enviando inspeção...</p>
-                  <p className="text-sm text-navy-400">Aguarde, seus arquivos estão sendo processados</p>
                 </div>
               )}
             </div>
@@ -221,13 +218,27 @@ export default function DashboardTecnico() {
           <h1 className="text-3xl font-extrabold text-navy-900">Meu Painel</h1>
           <p className="mt-1 text-sm text-navy-500">Suas inspeções de segurança do trabalho</p>
         </div>
-        <Link to="/tecnico/nova-inspecao" className="btn-primary">
+        <Link to="/tecnico/nova-inspecao" className="hidden sm:flex btn-primary">
           <FiPlus size={18} /> Inspeção Completa
         </Link>
       </div>
 
-      {/* Quick Inspection Section */}
-      <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 p-6 shadow-xl sm:p-8">
+      {/* Botão grande Fazer Inspeção Agora */}
+      <button
+        onClick={() => setShowPopup(true)}
+        className="mb-8 flex w-full items-center justify-center gap-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-navy-900 shadow-xl shadow-amber-500/25 transition-all hover:from-amber-400 hover:to-amber-500 hover:shadow-2xl hover:shadow-amber-500/30 active:scale-[0.98] sm:hidden"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-navy-900 text-amber-400">
+          <FiCamera size={28} />
+        </div>
+        <div className="text-left">
+          <p className="text-xl font-extrabold">Fazer Inspeção Agora</p>
+          <p className="text-sm text-navy-700/70">Tire foto, grave vídeo ou escolha da galeria</p>
+        </div>
+      </button>
+
+      {/* Desktop: 3 botões */}
+      <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-navy-900 via-navy-800 to-navy-900 p-6 shadow-xl sm:p-8 hidden sm:block">
         <div className="mb-6 text-center">
           <div className="mb-3 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500 text-navy-900">
             <FiCamera size={32} />
@@ -236,25 +247,25 @@ export default function DashboardTecnico() {
           <p className="mt-1 text-sm text-amber-200/80">Capture agora e receba a análise da IA em segundos</p>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button onClick={() => { setShowQuick(true); setQuickStep('capture'); }} className="group flex flex-col items-center gap-3 rounded-xl bg-amber-500 p-6 text-navy-900 transition-all hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/25">
+          <button onClick={() => photoRef.current?.click()} className="group flex flex-col items-center gap-3 rounded-xl bg-amber-500 p-6 text-navy-900 transition-all hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/25">
             <FiCamera size={36} className="transition-transform group-hover:scale-110" />
             <div className="text-center">
               <p className="text-base font-bold">Tirar Foto</p>
               <p className="text-xs text-navy-700/70">Câmera do celular</p>
             </div>
           </button>
-          <button onClick={() => { setShowQuick(true); setQuickStep('capture'); setTimeout(() => videoRef.current?.click(), 100); }} className="group flex flex-col items-center gap-3 rounded-xl bg-white/10 p-6 text-white transition-all hover:bg-white/20 hover:shadow-lg">
+          <button onClick={() => videoRef.current?.click()} className="group flex flex-col items-center gap-3 rounded-xl bg-white/10 p-6 text-white transition-all hover:bg-white/20 hover:shadow-lg">
             <FiVideo size={36} className="transition-transform group-hover:scale-110" />
             <div className="text-center">
               <p className="text-base font-bold">Gravar Vídeo</p>
               <p className="text-xs text-white/60">Vídeo curto do local</p>
             </div>
           </button>
-          <button onClick={() => { setShowQuick(true); setQuickStep('capture'); setTimeout(() => galleryRef.current?.click(), 100); }} className="group flex flex-col items-center gap-3 rounded-xl bg-white/10 p-6 text-white transition-all hover:bg-white/20 hover:shadow-lg">
+          <button onClick={() => galleryRef.current?.click()} className="group flex flex-col items-center gap-3 rounded-xl bg-white/10 p-6 text-white transition-all hover:bg-white/20 hover:shadow-lg">
             <FiImage size={36} className="transition-transform group-hover:scale-110" />
             <div className="text-center">
               <p className="text-base font-bold">Galeria</p>
-              <p className="text-xs text-white/60"> Fotos ou vídeos salvos</p>
+              <p className="text-xs text-white/60">Fotos ou vídeos salvos</p>
             </div>
           </button>
         </div>
