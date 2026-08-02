@@ -18,6 +18,7 @@ export default function NovaInspecao() {
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [cnpjData, setCnpjData] = useState<any>(null);
   const [novaEmpresa, setNovaEmpresa] = useState(false);
+  const cnpjLookupDone = useRef(false);
   const [novoSetor, setNovoSetor] = useState(false);
   const [novoSetorNome, setNovoSetorNome] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,14 +37,19 @@ export default function NovaInspecao() {
   const handleCnpjLookup = async (value: string) => {
     const clean = value.replace(/[^\d]/g, '');
     if (clean.length !== 14) return;
+    if (cnpjLookupDone.current) return;
+    cnpjLookupDone.current = true;
     setCnpjLoading(true);
+    toast.loading('Buscando dados do CNPJ...', { id: 'cnpj-lookup' });
     try {
       const { data } = await api.get(`/cnpj/${clean}`, { timeout: 30000 });
       setCnpjData(data);
+      toast.dismiss('cnpj-lookup');
       toast.success('Dados da empresa encontrados!');
       setNovaEmpresa(true);
     } catch (err: any) {
       console.error('CNPJ lookup error:', err);
+      toast.dismiss('cnpj-lookup');
       toast.error(err.message?.includes('timeout') ? 'Servidor demorou. Preencha manualmente.' : 'CNPJ não encontrado. Preencha manualmente.');
       setNovaEmpresa(true);
     } finally {
@@ -54,8 +60,11 @@ export default function NovaInspecao() {
   const formatCnpj = (v: string) => {
     const digits = v.replace(/\D/g, '').slice(0, 14);
     const formatted = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-    if (digits.length === 14 && cnpj.replace(/[^\d]/g, '').length !== 14) {
+    if (digits.length === 14) {
+      cnpjLookupDone.current = false;
       handleCnpjLookup(digits);
+    } else {
+      cnpjLookupDone.current = false;
     }
     return formatted;
   };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiSearch, FiLoader } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../api';
@@ -12,6 +12,7 @@ export default function EmpresasTecnico() {
   const [showNew, setShowNew] = useState(false);
   const [cnpj, setCnpj] = useState('');
   const [cnpjLoading, setCnpjLoading] = useState(false);
+  const cnpjLookupDone = useRef(false);
 
   useEffect(() => { load(); }, []);
   const load = () => api.get('/empresas').then(({ data }) => setEmpresas(data)).catch(() => {});
@@ -19,7 +20,10 @@ export default function EmpresasTecnico() {
   const handleCnpjLookup = async (value: string) => {
     const clean = value.replace(/[^\d]/g, '');
     if (clean.length !== 14) return;
+    if (cnpjLookupDone.current) return;
+    cnpjLookupDone.current = true;
     setCnpjLoading(true);
+    toast.loading('Buscando dados do CNPJ...', { id: 'cnpj-lookup' });
     try {
       const { data } = await api.get(`/cnpj/${clean}`);
       setForm({
@@ -29,9 +33,11 @@ export default function EmpresasTecnico() {
         telefone: data.telefone || '',
         email: data.email || '',
       });
+      toast.dismiss('cnpj-lookup');
       setShowNew(true);
       toast.success('Dados encontrados!');
     } catch {
+      toast.dismiss('cnpj-lookup');
       toast.error('CNPJ não encontrado');
       setShowNew(true);
     } finally {
@@ -42,8 +48,11 @@ export default function EmpresasTecnico() {
   const formatCnpj = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 14);
     const formatted = d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-    if (d.length === 14 && cnpj.replace(/[^\d]/g, '').length !== 14) {
+    if (d.length === 14) {
+      cnpjLookupDone.current = false;
       handleCnpjLookup(d);
+    } else {
+      cnpjLookupDone.current = false;
     }
     return formatted;
   };
