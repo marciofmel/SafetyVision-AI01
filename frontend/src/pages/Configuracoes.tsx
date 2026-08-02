@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { FiUser, FiHome, FiShield, FiSave, FiInfo, FiCheckCircle, FiCamera } from 'react-icons/fi';
+import { FiUser, FiHome, FiShield, FiSave, FiInfo, FiCheckCircle, FiCamera, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../api';
 
@@ -14,6 +14,7 @@ export default function Configuracoes() {
   const [senha, setSenha] = useState('');
   const [foto, setFoto] = useState(user?.foto || '');
   const [preview, setPreview] = useState(user?.foto || '');
+  const [showPassword, setShowPassword] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -121,7 +122,12 @@ export default function Configuracoes() {
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-navy-700">Nova senha (deixe vazio para manter)</label>
-                  <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="input-field" placeholder="••••••••" />
+                  <div className="relative">
+                    <input type={showPassword ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} className="input-field pr-10" placeholder="••••••••" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-500">
+                      {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
+                  </div>
                 </div>
                 <button onClick={handleSavePerfil} className="btn-primary mt-4"><FiSave size={16} /> Salvar Alterações</button>
               </div>

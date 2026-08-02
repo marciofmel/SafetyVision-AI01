@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiCamera } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiCamera, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
@@ -11,6 +11,7 @@ export default function UsuariosAdmin() {
   const [form, setForm] = useState({ nome: '', email: '', senha: '', cargo: 'Técnico', foto: '' });
   const [showNew, setShowNew] = useState(false);
   const [preview, setPreview] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { load(); }, []);
@@ -100,8 +101,12 @@ export default function UsuariosAdmin() {
             <div className="flex-1 space-y-3">
               <input className="input-field w-full" placeholder="Nome completo *" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
               <input className="input-field w-full" placeholder="Email *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              {!editingId && <input className="input-field w-full" type="password" placeholder="Senha *" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} />}
-              {editingId && <input className="input-field w-full" type="password" placeholder="Nova senha (vazio = manter)" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} />}
+              <div className="relative">
+                <input className="input-field w-full pr-10" type={showPassword ? 'text' : 'password'} placeholder={editingId ? "Nova senha (vazio = manter)" : "Senha *"} value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-500">
+                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                </button>
+              </div>
               <select className="input-field w-full" value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })}>
                 <option value="Técnico">Técnico</option>
                 <option value="Admin">Admin</option>
