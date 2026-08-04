@@ -59,6 +59,7 @@ export default function EmpresasTecnico() {
     toast.loading('Buscando informações da empresa na internet...', { id: 'cnpj-lookup' });
     try {
       const { data } = await api.get(`/cnpj/${clean}`, { timeout: 30000 });
+      const sociosArr = Array.isArray(data.socios) ? data.socios : (data.socios ? String(data.socios).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
       setForm({
         nome: data.nomeFantasia || data.nome || '',
         cnpj: data.cnpj || maskCnpj(clean),
@@ -78,7 +79,7 @@ export default function EmpresasTecnico() {
         atividadeSecundaria: data.atividadeSecundaria || '',
         simplesNacional: data.simplesNacional || false,
         empresaMEI: data.empresaMEI || false,
-        socios: Array.isArray(data.socios) ? data.socios.join(', ') : (data.socios || ''),
+        socios: sociosArr.join(', '),
         site: data.site || '',
         observacoes: data.observacoes || '',
       });

@@ -150,37 +150,48 @@ router.get('/:cnpj', async (req, res) => {
     const d = brasilData || {};
     const ai = aiData || {};
 
-    const telefone1 = ai.telefone || (d.ddd_telefone_1 ? `(${d.ddd_telefone_1.substring(0, 2)}) ${d.ddd_telefone_1.substring(2)}` : '');
+    const telefone1 = ai.telefone || d.telefone || (d.ddd_telefone_1 ? `(${d.ddd_telefone_1.substring(0, 2)}) ${d.ddd_telefone_1.substring(2)}` : '');
     const telefone2 = ai.telefone2 || (d.ddd_telefone_2 ? `(${d.ddd_telefone_2.substring(0, 2)}) ${d.ddd_telefone_2.substring(2)}` : '');
     const phones = [telefone1, telefone2].filter(Boolean).join(' / ');
 
-    const enderecoBase = ai.endereco || `${d.logradouro || ''} ${d.numero || ''}`.trim();
+    const enderecoLog = ai.endereco || d.logradouro || '';
+    const enderecoNum = d.numero || '';
+    const enderecoBase = [enderecoLog, enderecoNum].filter(Boolean).join(', ');
     const bairro = ai.bairro || d.bairro || '';
     const cidade = ai.cidade || d.municipio || '';
     const estado = ai.estado || d.uf || '';
-    const enderecoCompleto = [enderecoBase, bairro ? `-${ bairro}` : '', cidade && estado ? `${cidade}/${estado}` : ''].filter(Boolean).join(' ');
 
     const email1 = ai.email || d.email || '';
-    const email2 = ai.email2 || '';
+
+    const atividadePrincipal = ai.atividadePrincipal || d.cnae_fiscal_descricao || (Array.isArray(d.atividade_principal) ? d.atividade_principal[0]?.text : '') || '';
+    const atividadeSecundaria = ai.atividadeSecundaria || (Array.isArray(d.atividades_secundarias) ? d.atividades_secundarias.map((a: any) => a.text || a).join('; ') : '');
+    const naturezaJuridica = ai.naturezaJuridica || d.natureza_juridica || '';
+    const simplesNacional = d.simples?.optante === true || d.simples_nacional?.optante === true || false;
+    const empresaMEI = d.simei?.optante === true || false;
+    const socios = ai.socios || (Array.isArray(d.qsa) ? d.qsa.map((s: any) => s.nome_socio || s.nome).filter(Boolean) : []);
 
     res.json({
       nome: ai.nome || d.razao_social || d.nome || '',
-      nomeFantasia: ai.nomeFantasia || d.nome_fantasia || '',
+      nomeFantasia: ai.nomeFantasia || d.nome_fantasia || d.fantasia || '',
       cnpj: d.cnpj || cnpj,
-      endereco: enderecoCompleto,
+      endereco: enderecoBase,
       bairro: bairro,
       cidade: cidade,
       estado: estado,
       telefone: phones,
       email: email1,
-      email2: email2,
+      email2: ai.email2 || '',
       cep: ai.cep || d.cep || '',
-      situacao: ai.situacao || d.descricao_situacao_cadastral || '',
-      atividadePrincipal: ai.atividadePrincipal || d.cnae_fiscal_descricao || '',
+      situacao: ai.situacao || d.descricao_situacao_cadastral || d.situacao || '',
+      atividadePrincipal,
+      atividadeSecundaria,
+      naturezaJuridica,
       porte: ai.porte || d.porte || '',
-      dataAbertura: ai.dataAbertura || d.data_abertura || '',
+      dataAbertura: ai.dataAbertura || d.data_abertura || d.abertura || '',
       capitalSocial: ai.capitalSocial || d.capital_social || '',
-      socios: ai.socios || [],
+      socios,
+      simplesNacional,
+      empresaMEI,
       site: ai.site || '',
       observacoes: ai.observacoes || '',
     });
