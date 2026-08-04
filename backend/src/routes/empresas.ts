@@ -30,14 +30,14 @@ router.get('/:id', async (req: AuthRequest, res) => {
 
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { nome, cnpj, endereco, telefone, email } = req.body;
+    const { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     if (cnpj) {
       const existing = await prisma.empresa.findFirst({ where: { userId: req.userId!, cnpj, ativo: true } });
       if (existing) return res.status(409).json({ error: 'Empresa com este CNPJ já cadastrada' });
     }
     const empresa = await prisma.empresa.create({
-      data: { userId: req.userId!, nome, cnpj, endereco, telefone, email },
+      data: { userId: req.userId!, nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes },
     });
     res.status(201).json(empresa);
   } catch (err: any) {
@@ -50,8 +50,8 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const id = String(req.params.id);
     const existing = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
     if (!existing) return res.status(404).json({ error: 'Empresa não encontrada' });
-    const { nome, cnpj, endereco, telefone, email } = req.body;
-    const empresa = await prisma.empresa.update({ where: { id }, data: { nome, cnpj, endereco, telefone, email } });
+    const { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } = req.body;
+    const empresa = await prisma.empresa.update({ where: { id }, data: { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } });
     res.json(empresa);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

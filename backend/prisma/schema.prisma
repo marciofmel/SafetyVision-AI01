@@ -24,18 +24,34 @@ model User {
 }
 
 model Empresa {
-  id        String    @id @default(cuid())
-  userId    String    @default("")
-  user      User?     @relation(fields: [userId], references: [id])
-  nome      String
-  cnpj      String?
-  endereco  String?
-  telefone  String?
-  email     String?
-  ativo     Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  setores   Setor[]
-  inspecoes Inspecao[]
+  id                  String    @id @default(cuid())
+  userId              String    @default("")
+  user                User?     @relation(fields: [userId], references: [id])
+  nome                String
+  cnpj                String?
+  endereco            String?
+  telefone            String?
+  email               String?
+  bairro              String?
+  cidade              String?
+  estado              String?
+  cep                 String?
+  naturezaJuridica    String?
+  porte               String?
+  dataAbertura        String?
+  capitalSocial       String?
+  situacao            String?
+  atividadePrincipal  String?
+  atividadeSecundaria String?
+  simplesNacional     Boolean?
+  empresaMEI          Boolean?
+  socios              String?
+  site                String?
+  observacoes         String?
+  ativo               Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  setores             Setor[]
+  inspecoes           Inspecao[]
 }
 
 model Setor {
