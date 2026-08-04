@@ -40,12 +40,12 @@ export default function NovaInspecao() {
     if (cnpjLookupDone.current) return;
     cnpjLookupDone.current = true;
     setCnpjLoading(true);
-    toast.loading('Buscando dados do CNPJ...', { id: 'cnpj-lookup' });
+    toast.loading('Buscando informações da empresa na internet...', { id: 'cnpj-lookup' });
     try {
       const { data } = await api.get(`/cnpj/${clean}`, { timeout: 30000 });
       setCnpjData(data);
       toast.dismiss('cnpj-lookup');
-      toast.success('Dados da empresa encontrados!');
+      toast.success('Empresa encontrada! Todos os campos foram preenchidos.', { duration: 4000 });
       setNovaEmpresa(true);
     } catch (err: any) {
       console.error('CNPJ lookup error:', err);
@@ -71,10 +71,11 @@ export default function NovaInspecao() {
 
   const handleCreateEmpresa = async () => {
     try {
+      const enderecoParts = [cnpjData?.endereco, cnpjData?.bairro, cnpjData?.cidade && cnpjData?.estado ? `${cnpjData.cidade}/${cnpjData.estado}` : ''].filter(Boolean);
       const payload = {
-        nome: cnpjData?.nome || cnpjData?.nomeFantasia || 'Empresa',
+        nome: cnpjData?.nomeFantasia || cnpjData?.nome || 'Empresa',
         cnpj: cnpj || '',
-        endereco: cnpjData?.endereco ? `${cnpjData.endereco}, ${cnpjData.cidade || ''} - ${cnpjData.estado || ''}` : '',
+        endereco: enderecoParts.join(', ') || '',
         telefone: cnpjData?.telefone || '',
         email: cnpjData?.email || '',
       };
@@ -195,11 +196,20 @@ export default function NovaInspecao() {
             </div>
             {cnpjData && (
               <div className="mt-4 rounded-xl border border-success-200 bg-success-50 p-4 text-sm">
-                <p className="mb-1 font-bold text-success-700">Dados encontrados:</p>
-                <p className="text-navy-700">{cnpjData.nome || cnpjData.nomeFantasia}</p>
+                <p className="mb-1 font-bold text-success-700">Dados encontrados na internet:</p>
+                <p className="text-navy-700 font-semibold">{cnpjData.nome || cnpjData.nomeFantasia}</p>
+                {cnpjData.nomeFantasia && cnpjData.nome !== cnpjData.nomeFantasia && <p className="text-navy-600">Razão Social: {cnpjData.nome}</p>}
                 {cnpjData.endereco && <p className="text-navy-600">{cnpjData.endereco}</p>}
                 {cnpjData.cidade && <p className="text-navy-600">{cnpjData.cidade} - {cnpjData.estado}</p>}
+                {cnpjData.cep && <p className="text-navy-600">CEP: {cnpjData.cep}</p>}
                 {cnpjData.telefone && <p className="text-navy-600">Tel: {cnpjData.telefone}</p>}
+                {cnpjData.email && <p className="text-navy-600">Email: {cnpjData.email}</p>}
+                {cnpjData.situacao && <p className="text-navy-600">Situação: {cnpjData.situacao}</p>}
+                {cnpjData.atividadePrincipal && <p className="text-navy-600">Atividade: {cnpjData.atividadePrincipal}</p>}
+                {cnpjData.porte && <p className="text-navy-600">Porte: {cnpjData.porte}</p>}
+                {cnpjData.dataAbertura && <p className="text-navy-600">Abertura: {cnpjData.dataAbertura}</p>}
+                {cnpjData.site && <p className="text-navy-600">Site: {cnpjData.site}</p>}
+                <p className="mt-2 text-xs text-success-600">Você pode editar todos os campos livremente abaixo.</p>
               </div>
             )}
           </div>
@@ -215,12 +225,14 @@ export default function NovaInspecao() {
 
             {novaEmpresa ? (
               <div className="space-y-3">
-                <input className="input-field w-full" placeholder="Nome da empresa" value={cnpjData?.nome || cnpjData?.nomeFantasia || ''} onChange={(e) => setCnpjData({ ...cnpjData, nome: e.target.value })} />
+                <input className="input-field w-full" placeholder="Nome da empresa" value={cnpjData?.nomeFantasia || cnpjData?.nome || ''} onChange={(e) => setCnpjData({ ...cnpjData, nome: e.target.value })} />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <input className="input-field" placeholder="CNPJ" value={cnpj} readOnly />
                   <input className="input-field" placeholder="Telefone" value={cnpjData?.telefone || ''} onChange={(e) => setCnpjData({ ...cnpjData, telefone: e.target.value })} />
                 </div>
-                <input className="input-field w-full" placeholder="Endereço" value={cnpjData?.endereco || ''} onChange={(e) => setCnpjData({ ...cnpjData, endereco: e.target.value })} />
+                <input className="input-field w-full" placeholder="Endereço completo" value={cnpjData?.endereco || ''} onChange={(e) => setCnpjData({ ...cnpjData, endereco: e.target.value })} />
+                <input className="input-field w-full" placeholder="Email" value={cnpjData?.email || ''} onChange={(e) => setCnpjData({ ...cnpjData, email: e.target.value })} />
+                <p className="text-xs text-navy-400">Todos os campos são editáveis. Ajuste conforme necessário.</p>
                 <button onClick={handleCreateEmpresa} className="btn-primary bg-success-600"><FiCheck size={16} /> Criar Empresa</button>
               </div>
             ) : (
