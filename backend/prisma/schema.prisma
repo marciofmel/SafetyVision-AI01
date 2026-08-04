@@ -25,8 +25,8 @@ model User {
 
 model Empresa {
   id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @default("")
+  user      User?     @relation(fields: [userId], references: [id])
   nome      String
   cnpj      String?
   endereco  String?
@@ -36,14 +36,12 @@ model Empresa {
   createdAt DateTime  @default(now())
   setores   Setor[]
   inspecoes Inspecao[]
-
-  @@unique([userId, cnpj])
 }
 
 model Setor {
   id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
+  userId    String      @default("")
+  user      User?       @relation(fields: [userId], references: [id])
   nome      String
   descricao String?
   empresaId String
@@ -56,8 +54,8 @@ model Setor {
 
 model Colaborador {
   id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @default("")
+  user      User?    @relation(fields: [userId], references: [id])
   nome      String
   cargo     String?
   setorId   String?
