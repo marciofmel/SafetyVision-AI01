@@ -12,16 +12,21 @@ model User {
   nome          String
   email         String    @unique
   senhaHash     String
-  cargo         String    @default("Técnico")
+  cargo         String    @default("Tecnico")
   foto          String?
   ativo         Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   inspecoes     Inspecao[]
+  empresas      Empresa[]
+  setores       Setor[]
+  colaboradores Colaborador[]
 }
 
 model Empresa {
   id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
   nome      String
   cnpj      String?
   endereco  String?
@@ -31,10 +36,14 @@ model Empresa {
   createdAt DateTime  @default(now())
   setores   Setor[]
   inspecoes Inspecao[]
+
+  @@unique([userId, cnpj])
 }
 
 model Setor {
   id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
   nome      String
   descricao String?
   empresaId String
@@ -47,6 +56,8 @@ model Setor {
 
 model Colaborador {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
   nome      String
   cargo     String?
   setorId   String?

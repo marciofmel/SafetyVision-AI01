@@ -4,6 +4,7 @@ import fs from 'fs';
 import prisma from '../prisma';
 import { analisarImagem } from '../services/visionAnalysis';
 import { anotarImagem } from '../services/imageAnnotator';
+import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -11,10 +12,11 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 const anotadasDir = path.join(__dirname, '../../uploads/anotadas');
 if (!fs.existsSync(anotadasDir)) fs.mkdirSync(anotadasDir, { recursive: true });
 
-router.post('/:inspecaoId/analisar', async (req, res) => {
+router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
   try {
-    const inspecao = await prisma.inspecao.findUnique({
-      where: { id: req.params.inspecaoId },
+    const inspecaoId = String(req.params.inspecaoId);
+    const inspecao = await prisma.inspecao.findFirst({
+      where: { id: inspecaoId, usuarioId: req.userId! },
       include: { midias: true },
     });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });

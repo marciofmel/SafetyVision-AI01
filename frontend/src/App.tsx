@@ -25,11 +25,12 @@ import TecnicoLayout from './components/TecnicoLayout';
 
 import NRsAtualizadas from './pages/NRsAtualizadas';
 import Configuracoes from './pages/Configuracoes';
+import LandingPage from './pages/LandingPage';
 
 function PrivateRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
-  if (!user) return <Navigate to="/admin/login" />;
+  if (loading) return <div className="flex h-screen items-center justify-center bg-navy-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
+  if (!user) return <Navigate to="/" />;
   if (requiredRole) {
     const isAdmin = user.cargo === 'Admin' || user.cargo === 'Administrador';
     if (requiredRole === 'Admin' && !isAdmin) return <Navigate to="/tecnico" />;
@@ -38,20 +39,20 @@ function PrivateRoute({ children, requiredRole }: { children: React.ReactNode; r
   return <>{children}</>;
 }
 
-function LandingRedirect() {
+function AuthRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
+  if (loading) return <div className="flex h-screen items-center justify-center bg-navy-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>;
   if (user) {
     const isAdmin = user.cargo === 'Admin' || user.cargo === 'Administrador';
     return <Navigate to={isAdmin ? '/admin' : '/tecnico'} />;
   }
-  return <Navigate to="/admin/login" />;
+  return <LandingPage />;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingRedirect />} />
+      <Route path="/" element={<AuthRedirect />} />
 
       <Route path="/admin/login" element={<LoginAdmin />} />
       <Route path="/admin" element={<PrivateRoute requiredRole="Admin"><AdminLayout /></PrivateRoute>}>

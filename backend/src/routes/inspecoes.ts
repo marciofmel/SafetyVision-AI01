@@ -21,18 +21,15 @@ const router = Router();
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
-    const { empresaId, setorId } = req.query;
-    const user = await prisma.user.findUnique({ where: { id: req.userId! }, select: { cargo: true } });
-    const isAdmin = user?.cargo === 'Admin' || user?.cargo === 'Administrador';
-
-    const where: any = {};
-    if (!isAdmin) where.usuarioId = req.userId;
-    if (empresaId) where.empresaId = empresaId as string;
-    if (setorId) where.setorId = setorId as string;
+    const { empresaId, setorId, status } = req.query;
+    const where: any = { usuarioId: req.userId! };
+    if (empresaId) where.empresaId = String(empresaId);
+    if (setorId) where.setorId = String(setorId);
+    if (status) where.status = String(status);
 
     const inspecoes = await prisma.inspecao.findMany({
       where,
-      include: { empresa: true, setor: true, usuario: { select: { nome: true, email: true } }, _count: { select: { midias: true, riscos: true, epiViolacoes: true } } },
+      include: { empresa: true, setor: true, _count: { select: { midias: true, riscos: true, epiViolacoes: true } } },
       orderBy: { createdAt: 'desc' },
     });
     res.json(inspecoes);
@@ -43,9 +40,9 @@ router.get('/', async (req: AuthRequest, res) => {
 
 router.get('/:id', async (req: AuthRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const inspecao = await prisma.inspecao.findUnique({
-      where: { id },
+    const id = String(req.params.id);
+    const inspecao = await prisma.inspecao.findFirst({
+      where: { id, usuarioId: req.userId! },
       include: { empresa: true, setor: true, midias: true, riscos: true, epiViolacoes: true, usuario: { select: { nome: true, email: true } } },
     });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
@@ -60,30 +57,27 @@ router.post('/', async (req: AuthRequest, res) => {
     const { empresaId, setorId, observacoes } = req.body;
     if (!empresaId || !setorId) return res.status(400).json({ error: 'Empresa e setor são obrigatórios' });
 
-    const user = await prisma.user.findUnique({ where: { id: req.userId! } });
-    if (!user) return res.status(401).json({ error: 'Usuário não encontrado. Faça login novamente.' });
+    const empresa = await prisma.empresa.findFirst({ where: { id: empresaId, userId: req.userId! } });
+    if (!empresa) return res.status(400).json({ error: 'Empresa não encontrada.' });
 
-    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
-    if (!empresa) return res.status(400).json({ error: 'Empresa não encontrada. Cadastre uma empresa primeiro.' });
-
-    const setor = await prisma.setor.findUnique({ where: { id: setorId } });
-    if (!setor) return res.status(400).json({ error: 'Setor não encontrado. Cadastre um setor primeiro.' });
+    const setor = await prisma.setor.findFirst({ where: { id: setorId, userId: req.userId! } });
+    if (!setor) return res.status(400).json({ error: 'Setor não encontrado.' });
 
     const inspecao = await prisma.inspecao.create({
-      data: { empresaId, setorId, usuarioId: user.id, observacoes },
+      data: { empresaId, setorId, usuarioId: req.userId!, observacoes },
       include: { empresa: true, setor: true },
     });
     res.status(201).json(inspecao);
   } catch (err: any) {
     console.error('Erro ao criar inspeção:', err.message);
-    res.status(500).json({ error: 'Erro ao criar inspeção. Faça login novamente.' });
+    res.status(500).json({ error: 'Erro ao criar inspeção.' });
   }
 });
 
 router.post('/:id/midias', upload.array('files', 20), async (req: AuthRequest, res) => {
   try {
-    const id = req.params.id as string;
-    const inspecao = await prisma.inspecao.findUnique({ where: { id } });
+    const id = String(req.params.id);
+    const inspecao = await prisma.inspecao.findFirst({ where: { id, usuarioId: req.userId! } });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
 
     const files = req.files as Express.Multer.File[];
@@ -113,13 +107,16 @@ router.post('/:id/midias', upload.array('files', 20), async (req: AuthRequest, r
 
 router.put('/:id/finalizar', async (req: AuthRequest, res) => {
   try {
-    const id = req.params.id as string;
+    const id = String(req.params.id);
+    const inspecao = await prisma.inspecao.findFirst({ where: { id, usuarioId: req.userId! } });
+    if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
+
     const { observacoes, notaConformidade } = req.body;
-    const inspecao = await prisma.inspecao.update({
+    const updated = await prisma.inspecao.update({
       where: { id },
       data: { status: 'concluida', dataFim: new Date(), observacoes, notaConformidade: parseFloat(notaConformidade) || null },
     });
-    res.json(inspecao);
+    res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -4,16 +4,18 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import prisma from '../prisma';
+import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
 const uploadsDir = path.join(__dirname, '../../uploads');
 const anotadasDir = path.join(__dirname, '../../uploads/anotadas');
 
-router.get('/:inspecaoId/relatorio', async (req, res) => {
+router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
   try {
-    const inspecao = await prisma.inspecao.findUnique({
-      where: { id: req.params.inspecaoId },
+    const inspecaoId = String(req.params.inspecaoId);
+    const inspecao = await prisma.inspecao.findFirst({
+      where: { id: inspecaoId, usuarioId: req.userId! },
       include: {
         empresa: true,
         setor: true,
