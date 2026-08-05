@@ -67,7 +67,18 @@ export default function ColaboradoresTecnico() {
 
   const handleSave = async (id?: string) => {
     try {
-      const payload = { ...form, cpf: form.cpf.replace(/\D/g, ''), rg: form.rg.replace(/\D/g, ''), telefone: form.telefone.replace(/\D/g, '') };
+      const payload = {
+        ...form,
+        cpf: form.cpf.replace(/\D/g, '') || null,
+        rg: form.rg.replace(/\D/g, '') || null,
+        telefone: form.telefone.replace(/\D/g, '') || null,
+        setorId: form.setorId || null,
+        email: form.email || null,
+        dataNascimento: form.dataNascimento || null,
+        admissao: form.admissao || null,
+        matricula: form.matricula || null,
+        aso: form.aso || null,
+      };
       if (id) { await api.put(`/colaboradores/${id}`, payload); toast.success('Atualizado!'); }
       else { await api.post('/colaboradores', payload); toast.success('Colaborador criado!'); }
       setShowForm(false); setEditingId(null); setForm(emptyForm); load();

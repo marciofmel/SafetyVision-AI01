@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -25,8 +25,8 @@ model User {
 
 model Empresa {
   id                  String    @id @default(cuid())
-  userId              String    @default("")
-  user                User?     @relation(fields: [userId], references: [id])
+  userId              String
+  user                User      @relation(fields: [userId], references: [id])
   nome                String
   cnpj                String?
   endereco            String?
@@ -52,12 +52,13 @@ model Empresa {
   createdAt           DateTime  @default(now())
   setores             Setor[]
   inspecoes           Inspecao[]
+  colaboradores       Colaborador[]
 }
 
 model Setor {
   id        String      @id @default(cuid())
-  userId    String      @default("")
-  user      User?       @relation(fields: [userId], references: [id])
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
   nome      String
   descricao String?
   empresaId String
@@ -69,24 +70,25 @@ model Setor {
 }
 
 model Colaborador {
-  id              String   @id @default(cuid())
-  userId          String   @default("")
-  user            User?    @relation(fields: [userId], references: [id])
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
   nome            String
   cpf             String?
   rg              String?
   cargo           String?
   setorId         String?
-  setor           Setor?   @relation(fields: [setorId], references: [id])
+  setor           Setor?    @relation(fields: [setorId], references: [id])
   empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
   telefone        String?
   email           String?
   dataNascimento  String?
   admissao        String?
   matricula       String?
   aso             String?
-  ativo           Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  ativo           Boolean   @default(true)
+  createdAt       DateTime  @default(now())
 }
 
 model Inspecao {
