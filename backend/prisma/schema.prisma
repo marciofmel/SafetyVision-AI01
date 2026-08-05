@@ -69,16 +69,24 @@ model Setor {
 }
 
 model Colaborador {
-  id        String   @id @default(cuid())
-  userId    String   @default("")
-  user      User?    @relation(fields: [userId], references: [id])
-  nome      String
-  cargo     String?
-  setorId   String?
-  setor     Setor?   @relation(fields: [setorId], references: [id])
-  empresaId String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String   @default("")
+  user            User?    @relation(fields: [userId], references: [id])
+  nome            String
+  cpf             String?
+  rg              String?
+  cargo           String?
+  setorId         String?
+  setor           Setor?   @relation(fields: [setorId], references: [id])
+  empresaId       String
+  telefone        String?
+  email           String?
+  dataNascimento  String?
+  admissao        String?
+  matricula       String?
+  aso             String?
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
 }
 
 model Inspecao {
