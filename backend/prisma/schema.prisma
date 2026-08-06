@@ -22,6 +22,10 @@ model User {
   setores       Setor[]
   colaboradores Colaborador[]
   checklists    ChecklistTemplate[]
+  epis          Epi[]
+  treinamentos  Treinamento[]
+  incidentes    Incidente[]
+  laudos        Laudo[]
 }
 
 model Empresa {
@@ -54,6 +58,10 @@ model Empresa {
   setores             Setor[]
   inspecoes           Inspecao[]
   colaboradores       Colaborador[]
+  epis                Epi[]
+  treinamentos        Treinamento[]
+  incidentes          Incidente[]
+  laudos              Laudo[]
 }
 
 model Setor {
@@ -68,6 +76,8 @@ model Setor {
   createdAt DateTime    @default(now())
   inspecoes Inspecao[]
   collabors Colaborador[]
+  epis      Epi[]
+  incidentes Incidente[]
 }
 
 model Colaborador {
@@ -90,6 +100,8 @@ model Colaborador {
   aso             String?
   ativo           Boolean   @default(true)
   createdAt       DateTime  @default(now())
+  episEntregas    EpiEntrega[]
+  treinamentos    TreinamentoParticipacao[]
 }
 
 model Inspecao {
@@ -114,6 +126,7 @@ model Inspecao {
   riscos          Risco[]
   epiViolacoes    EpiViolacao[]
   checklistRespostas ChecklistResposta[]
+  laudos          Laudo[]
 }
 
 model Midia {
@@ -191,4 +204,112 @@ model ChecklistResposta {
   conformidade String
   observacao  String?
   createdAt   DateTime @default(now())
+}
+
+model Epi {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  nome            String
+  ca              String?
+  fabricante      String?
+  validadeCa      DateTime?
+  dataCompra      DateTime?
+  vidaUtilMeses   Int?
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  setorId         String?
+  setor           Setor?    @relation(fields: [setorId], references: [id])
+  status          String    @default("ativo")
+  observacoes     String?
+  createdAt       DateTime  @default(now())
+  entregas        EpiEntrega[]
+}
+
+model EpiEntrega {
+  id         String    @id @default(cuid())
+  epiId      String
+  epi        Epi       @relation(fields: [epiId], references: [id], onDelete: Cascade)
+  colaboradorId String
+  colaborador Colaborador @relation(fields: [colaboradorId], references: [id])
+  dataEntrega DateTime  @default(now())
+  dataDevolucao DateTime?
+  assinatura  String?
+  observacao  String?
+}
+
+model Treinamento {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  nome            String
+  nr              String?
+  descricao       String?
+  cargaHoraria    Int?
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  dataInicio      DateTime
+  dataFim         DateTime?
+  local           String?
+  instrutor       String?
+  status          String    @default("agendado")
+  createdAt       DateTime  @default(now())
+  participacoes   TreinamentoParticipacao[]
+}
+
+model TreinamentoParticipacao {
+  id              String    @id @default(cuid())
+  treinamentoId   String
+  treinamento     Treinamento @relation(fields: [treinamentoId], references: [id], onDelete: Cascade)
+  colaboradorId   String
+  colaborador     Colaborador @relation(fields: [colaboradorId], references: [id])
+  status          String    @default("pendente")
+  dataConclusao   DateTime?
+  certificado     String?
+  nota            Float?
+  observacao      String?
+}
+
+model Incidente {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  setorId         String?
+  setor           Setor?    @relation(fields: [setorId], references: [id])
+  dataIncidente   DateTime
+  tipo            String
+  gravidade       String
+  descricao       String
+  localIncidente  String?
+  colaboradoresEnvolvidos String?
+  testemunhas     String?
+  causas          String?
+  acoesCorretivas String?
+  acoesPreventivas String?
+  danos           String?
+  catNumero       String?
+  catData         DateTime?
+  status          String    @default("aberto")
+  createdAt       DateTime  @default(now())
+}
+
+model Laudo {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  inspecaoId      String?
+  inspecao        Inspecao? @relation(fields: [inspecaoId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  titulo          String
+  nr              String?
+  tipo            String    @default("inspecao")
+  conteudo        String?
+  dataEmissao     DateTime  @default(now())
+  responsavel     String?
+  aprovado        Boolean   @default(false)
+  arquivoUrl      String?
+  createdAt       DateTime  @default(now())
 }

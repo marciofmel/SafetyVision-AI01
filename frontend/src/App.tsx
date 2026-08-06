@@ -19,6 +19,9 @@ import NRTecnico from './pages/tecnico/NRTecnico';
 import ConfigTecnico from './pages/tecnico/ConfigTecnico';
 import ChecklistsTecnico from './pages/tecnico/ChecklistsTecnico';
 import CalculadoraNR28 from './pages/tecnico/CalculadoraNR28';
+import EpiTecnico from './pages/tecnico/EpiTecnico';
+import TreinamentosTecnico from './pages/tecnico/TreinamentosTecnico';
+import IncidentesTecnico from './pages/tecnico/IncidentesTecnico';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
@@ -80,6 +83,9 @@ export default function App() {
         <Route path="historico" element={<Historico />} />
         <Route path="checklists" element={<ChecklistsTecnico />} />
         <Route path="calculadora-nr28" element={<CalculadoraNR28 />} />
+        <Route path="epis" element={<EpiTecnico />} />
+        <Route path="treinamentos" element={<TreinamentosTecnico />} />
+        <Route path="incidentes" element={<IncidentesTecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>

@@ -15,6 +15,9 @@ import cnpjRoutes from './routes/cnpj';
 import checklistsRoutes from './routes/checklists';
 import multasRoutes from './routes/multas';
 import exportRoutes from './routes/export';
+import episRoutes from './routes/epis';
+import treinamentosRoutes from './routes/treinamentos';
+import incidentesRoutes from './routes/incidentes';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -35,6 +38,9 @@ app.use('/api/cnpj', cnpjRoutes);
 app.use('/api/checklists', authMiddleware, checklistsRoutes);
 app.use('/api/multas', multasRoutes);
 app.use('/api/export', authMiddleware, exportRoutes);
+app.use('/api/epis', authMiddleware, episRoutes);
+app.use('/api/treinamentos', authMiddleware, treinamentosRoutes);
+app.use('/api/incidentes', authMiddleware, incidentesRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 
