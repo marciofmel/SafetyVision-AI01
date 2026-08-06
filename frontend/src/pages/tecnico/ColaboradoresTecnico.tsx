@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiFileText, FiUsers, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiUpload, FiFileText, FiUsers, FiCheck, FiAlertCircle, FiDownload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
@@ -157,9 +157,17 @@ export default function ColaboradoresTecnico() {
           <h1 className="text-2xl font-extrabold text-navy-900 sm:text-3xl">Colaboradores</h1>
           <p className="mt-1 text-sm text-navy-500">{colabs.length} colaboradores cadastrados</p>
         </div>
-        <button onClick={() => { setShowForm(true); setActiveTab('cadastrar'); setEditingId(null); setForm(emptyForm); }} className="btn-primary">
-          <FiPlus size={18} /> Novo Colaborador
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.open('/api/export/colaboradores', '_blank')}
+            className="flex items-center gap-2 rounded-xl border border-navy-200 px-4 py-2.5 text-sm font-semibold text-navy-700 hover:bg-navy-50"
+          >
+            <FiDownload size={16} /> Exportar CSV
+          </button>
+          <button onClick={() => { setShowForm(true); setActiveTab('cadastrar'); setEditingId(null); setForm(emptyForm); }} className="btn-primary">
+            <FiPlus size={18} /> Novo Colaborador
+          </button>
+        </div>
       </div>
 
       {showForm && (
