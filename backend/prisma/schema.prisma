@@ -21,6 +21,7 @@ model User {
   empresas      Empresa[]
   setores       Setor[]
   colaboradores Colaborador[]
+  checklists    ChecklistTemplate[]
 }
 
 model Empresa {
@@ -106,10 +107,13 @@ model Inspecao {
   totalVideos     Int       @default(0)
   notaConformidade Float?
   observacoes     String?
+  latitude        Float?
+  longitude       Float?
   createdAt       DateTime  @default(now())
   midias          Midia[]
   riscos          Risco[]
   epiViolacoes    EpiViolacao[]
+  checklistRespostas ChecklistResposta[]
 }
 
 model Midia {
@@ -152,4 +156,39 @@ model EpiViolacao {
   descricao  String?
   imagemUrl  String?
   createdAt  DateTime  @default(now())
+}
+
+model ChecklistTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  nome        String
+  descricao   String?
+  nr          String
+  itens       ChecklistItem[]
+  respostas   ChecklistResposta[]
+  createdAt   DateTime @default(now())
+}
+
+model ChecklistItem {
+  id          String   @id @default(cuid())
+  templateId  String
+  template    ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  texto       String
+  obrigatorio Boolean  @default(true)
+  ordem       Int      @default(0)
+  respostas   ChecklistResposta[]
+}
+
+model ChecklistResposta {
+  id          String   @id @default(cuid())
+  inspecaoId  String
+  inspecao    Inspecao @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    ChecklistTemplate @relation(fields: [templateId], references: [id])
+  itemId      String
+  item        ChecklistItem @relation(fields: [itemId], references: [id])
+  conformidade String
+  observacao  String?
+  createdAt   DateTime @default(now())
 }

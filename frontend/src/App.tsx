@@ -17,6 +17,8 @@ import EmpresasTecnico from './pages/tecnico/EmpresasTecnico';
 import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
 import NRTecnico from './pages/tecnico/NRTecnico';
 import ConfigTecnico from './pages/tecnico/ConfigTecnico';
+import ChecklistsTecnico from './pages/tecnico/ChecklistsTecnico';
+import CalculadoraNR28 from './pages/tecnico/CalculadoraNR28';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
@@ -76,6 +78,8 @@ export default function App() {
         <Route path="analise/:id" element={<AnaliseIA />} />
         <Route path="relatorio/:id" element={<Relatorio />} />
         <Route path="historico" element={<Historico />} />
+        <Route path="checklists" element={<ChecklistsTecnico />} />
+        <Route path="calculadora-nr28" element={<CalculadoraNR28 />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>

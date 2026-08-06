@@ -54,7 +54,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
 
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { empresaId, setorId, observacoes } = req.body;
+    const { empresaId, setorId, observacoes, latitude, longitude } = req.body;
     if (!empresaId || !setorId) return res.status(400).json({ error: 'Empresa e setor são obrigatórios' });
 
     const empresa = await prisma.empresa.findFirst({ where: { id: empresaId, userId: req.userId! } });
@@ -64,7 +64,14 @@ router.post('/', async (req: AuthRequest, res) => {
     if (!setor) return res.status(400).json({ error: 'Setor não encontrado.' });
 
     const inspecao = await prisma.inspecao.create({
-      data: { empresaId, setorId, usuarioId: req.userId!, observacoes },
+      data: {
+        empresaId,
+        setorId,
+        usuarioId: req.userId!,
+        observacoes,
+        latitude: latitude ? parseFloat(latitude) : null,
+        longitude: longitude ? parseFloat(longitude) : null,
+      },
       include: { empresa: true, setor: true },
     });
     res.status(201).json(inspecao);

@@ -1,12 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiPlus, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiCamera, FiArrowRight, FiVideo, FiImage, FiX, FiLoader } from 'react-icons/fi';
+import { FiPlus, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiCamera, FiArrowRight, FiVideo, FiImage, FiX, FiLoader, FiMapPin } from 'react-icons/fi';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import api from '../../api';
 import toast from 'react-hot-toast';
+
+const COLORS = ['#0F172A', '#F59E0B', '#16A34A', '#DC2626', '#EA580C', '#8B5CF6'];
 
 export default function DashboardTecnico() {
   const [stats, setStats] = useState({ total: 0, concluidas: 0, emAndamento: 0, riscos: 0 });
   const [recentes, setRecentes] = useState<any[]>([]);
+  const [allInspecoes, setAllInspecoes] = useState<any[]>([]);
   const [showPopup, setShowPopup] = useState(false);
   const [capturedFiles, setCapturedFiles] = useState<File[]>([]);
   const [capturedPreviews, setCapturedPreviews] = useState<string[]>([]);
@@ -15,6 +19,7 @@ export default function DashboardTecnico() {
   const [empresaId, setEmpresaId] = useState('');
   const [setorId, setSetorId] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [geolocation, setGeolocation] = useState<{ lat: number; lng: number } | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -22,6 +27,7 @@ export default function DashboardTecnico() {
 
   useEffect(() => {
     api.get('/inspecoes').then(({ data }) => {
+      setAllInspecoes(data);
       setStats({
         total: data.length,
         concluidas: data.filter((i: any) => i.status === 'concluida' || i.status === 'analisada').length,
@@ -31,6 +37,15 @@ export default function DashboardTecnico() {
       setRecentes(data.slice(0, 5));
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (showPopup && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setGeolocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => setGeolocation(null)
+      );
+    }
+  }, [showPopup]);
 
   useEffect(() => {
     if (showPopup) {
@@ -66,7 +81,12 @@ export default function DashboardTecnico() {
     if (capturedFiles.length === 0) return toast.error('Adicione pelo menos um arquivo');
     setUploading(true);
     try {
-      const { data: inspecao } = await api.post('/inspecoes', { empresaId, setorId });
+      const payload: any = { empresaId, setorId };
+      if (geolocation) {
+        payload.latitude = geolocation.lat;
+        payload.longitude = geolocation.lng;
+      }
+      const { data: inspecao } = await api.post('/inspecoes', payload);
       const formData = new FormData();
       capturedFiles.forEach((f) => formData.append('files', f));
       await api.post(`/inspecoes/${inspecao.id}/midias`, formData, {
@@ -78,6 +98,7 @@ export default function DashboardTecnico() {
       setCapturedPreviews([]);
       setEmpresaId('');
       setSetorId('');
+      setGeolocation(null);
       navigate(`/tecnico/analise/${inspecao.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Erro ao enviar');
@@ -92,21 +113,43 @@ export default function DashboardTecnico() {
     setCapturedPreviews([]);
     setEmpresaId('');
     setSetorId('');
+    setGeolocation(null);
   };
+
+  // Chart data
+  const inspecoesPorMes = (() => {
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const now = new Date();
+    return months.slice(0, now.getMonth() + 1).map((m, i) => ({
+      name: m,
+      inspecoes: allInspecoes.filter(ins => {
+        const d = new Date(ins.createdAt);
+        return d.getMonth() === i && d.getFullYear() === now.getFullYear();
+      }).length,
+    }));
+  })();
+
+  const riscosPorCategoria = (() => {
+    const cats: Record<string, number> = {};
+    allInspecoes.forEach(ins => {
+      (ins.riscos || []).forEach((r: any) => {
+        cats[r.categoria] = (cats[r.categoria] || 0) + 1;
+      });
+    });
+    return Object.entries(cats).map(([name, value]) => ({ name, value }));
+  })();
+
+  const statusData = [
+    { name: 'Concluídas', value: stats.concluidas },
+    { name: 'Em Andamento', value: stats.emAndamento },
+    { name: 'Total', value: stats.total - stats.concluidas - stats.emAndamento },
+  ].filter(d => d.value > 0);
 
   const cards = [
     { label: 'Minhas Inspeções', value: stats.total, icon: <FiShield />, color: 'bg-navy-900', textColor: 'text-amber-400' },
     { label: 'Concluídas', value: stats.concluidas, icon: <FiCheckCircle />, color: 'bg-success-600', textColor: 'text-white' },
     { label: 'Em Andamento', value: stats.emAndamento, icon: <FiClock />, color: 'bg-amber-500', textColor: 'text-navy-900' },
     { label: 'Riscos Encontrados', value: stats.riscos, icon: <FiAlertTriangle />, color: 'bg-danger-600', textColor: 'text-white' },
-  ];
-
-  const steps = [
-    { num: 1, title: 'Selecionar Empresa', desc: 'Escolha a empresa', icon: <FiShield size={20} /> },
-    { num: 2, title: 'Escolher Setor', desc: 'Selecione o setor', icon: <FiAlertTriangle size={20} /> },
-    { num: 3, title: 'Capturar Fotos', desc: 'Tire fotos do local', icon: <FiCamera size={20} /> },
-    { num: 4, title: 'Análise IA', desc: 'IA analisa riscos', icon: <FiCheckCircle size={20} /> },
-    { num: 5, title: 'Gerar Relatório', desc: 'PDF completo', icon: <FiCheckCircle size={20} /> },
   ];
 
   return (
@@ -202,6 +245,13 @@ export default function DashboardTecnico() {
                     </select>
                   </div>
 
+                  {geolocation && (
+                    <div className="flex items-center gap-2 rounded-xl bg-success-50 px-4 py-2 text-xs text-success-700">
+                      <FiMapPin size={14} />
+                      GPS: {geolocation.lat.toFixed(6)}, {geolocation.lng.toFixed(6)}
+                    </div>
+                  )}
+
                   <button onClick={handleSubmitQuick} disabled={!empresaId || !setorId || uploading} className="btn-primary w-full py-3 text-base disabled:opacity-50">
                     {uploading ? <FiLoader className="animate-spin" size={18} /> : <FiCamera size={18} />}
                     {uploading ? 'Enviando...' : 'Enviar e Analisar'}
@@ -271,6 +321,7 @@ export default function DashboardTecnico() {
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c) => (
           <div key={c.label} className="card overflow-hidden">
@@ -283,30 +334,53 @@ export default function DashboardTecnico() {
         ))}
       </div>
 
-      <div className="card mb-8 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-navy-900">Como funciona</h2>
-          <Link to="/tecnico/nova-inspecao" className="flex items-center gap-1 text-sm font-semibold text-amber-600 hover:text-amber-700">
-            Inspeção completa <FiArrowRight size={14} />
-          </Link>
+      {/* Charts */}
+      {allInspecoes.length > 0 && (
+        <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Inspeções por Mês */}
+          <div className="card p-6 lg:col-span-2">
+            <h3 className="mb-4 font-bold text-navy-900">Inspeções por Mês</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={inspecoesPorMes}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Bar dataKey="inspecoes" fill="#F59E0B" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Status Pie */}
+          <div className="card p-6">
+            <h3 className="mb-4 font-bold text-navy-900">Status das Inspeções</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>
+                  {statusData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          {steps.map((s, i) => (
-            <div key={i} className="group relative">
-              <div className="flex items-start gap-4 rounded-xl border-2 border-navy-100 p-4 transition-all hover:border-amber-400 hover:bg-amber-50/50">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy-900 text-amber-400 transition-all group-hover:bg-amber-500 group-hover:text-navy-900">
-                  {s.icon}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-amber-600">PASSO {s.num}</p>
-                  <p className="text-sm font-semibold text-navy-900">{s.title}</p>
-                  <p className="mt-1 text-xs text-navy-400">{s.desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+      )}
+
+      {/* Riscos por Categoria */}
+      {riscosPorCategoria.length > 0 && (
+        <div className="card mb-8 p-6">
+          <h3 className="mb-4 font-bold text-navy-900">Riscos por Categoria</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={riscosPorCategoria} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis type="number" tick={{ fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#DC2626" radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      </div>
+      )}
 
       {recentes.length > 0 && (
         <div className="card p-6">
@@ -326,6 +400,11 @@ export default function DashboardTecnico() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {insp.latitude && (
+                    <span className="flex items-center gap-1 rounded-full bg-success-100 px-2 py-0.5 text-[10px] font-bold text-success-700">
+                      <FiMapPin size={10} /> GPS
+                    </span>
+                  )}
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${
                     insp.status === 'concluida' ? 'bg-success-100 text-success-700' :
                     insp.status === 'analisada' ? 'bg-navy-100 text-navy-700' :
