@@ -77,7 +77,10 @@ router.post('/', async (req: AuthRequest, res) => {
 router.post('/:id/midias', upload.array('files', 20), async (req: AuthRequest, res) => {
   try {
     const id = String(req.params.id);
-    const inspecao = await prisma.inspecao.findFirst({ where: { id, usuarioId: req.userId! } });
+    const inspecao = await prisma.inspecao.findFirst({
+      where: { id, usuarioId: req.userId! },
+      include: { empresa: true, setor: true },
+    });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
 
     const files = req.files as Express.Multer.File[];

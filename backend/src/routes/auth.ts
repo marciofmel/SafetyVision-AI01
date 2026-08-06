@@ -1,17 +1,32 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import prisma from '../prisma';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+const registerSchema = z.object({
+  nome: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  senha: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  cargo: z.string().optional(),
+  foto: z.string().nullable().optional(),
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Email inválido'),
+  senha: z.string().min(1, 'Senha é obrigatória'),
+});
+
 router.post('/register', async (req, res) => {
   try {
-    const { nome, email, senha, cargo, foto } = req.body;
-    if (!nome || !email || !senha) {
-      return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
     }
+    const { nome, email, senha, cargo, foto } = parsed.data;
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) {
       return res.status(409).json({ error: 'Email já cadastrado' });
@@ -32,10 +47,11 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, senha } = req.body;
-    if (!email || !senha) {
-      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
     }
+    const { email, senha } = parsed.data;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.ativo) {
       return res.status(401).json({ error: 'Credenciais inválidas' });

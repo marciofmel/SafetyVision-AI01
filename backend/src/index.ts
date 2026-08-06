@@ -32,6 +32,17 @@ app.use('/api/cnpj', cnpjRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Erro não tratado:', err);
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Arquivo muito grande. Limite: 50MB' });
+  }
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: 'Arquivo muito grande' });
+  }
+  res.status(500).json({ error: 'Erro interno do servidor' });
+});
+
 const frontendPath = path.join(__dirname, '../frontend');
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath));

@@ -1,8 +1,15 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+const setorSchema = z.object({
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  descricao: z.string().nullable().optional(),
+  empresaId: z.string().min(1, 'Empresa é obrigatória'),
+});
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -29,8 +36,11 @@ router.get('/:id', async (req: AuthRequest, res) => {
 
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { nome, descricao, empresaId } = req.body;
-    if (!nome || !empresaId) return res.status(400).json({ error: 'Nome e empresa são obrigatórios' });
+    const parsed = setorSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { nome, descricao, empresaId } = parsed.data;
     const empresa = await prisma.empresa.findFirst({ where: { id: empresaId, userId: req.userId! } });
     if (!empresa) return res.status(400).json({ error: 'Empresa não encontrada' });
     const setor = await prisma.setor.create({ data: { userId: req.userId!, nome, descricao, empresaId } });

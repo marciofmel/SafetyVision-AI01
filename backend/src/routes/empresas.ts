@@ -1,8 +1,33 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
+
+const empresaSchema = z.object({
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  cnpj: z.string().nullable().optional(),
+  endereco: z.string().nullable().optional(),
+  telefone: z.string().nullable().optional(),
+  email: z.string().email('Email inválido').nullable().optional(),
+  bairro: z.string().nullable().optional(),
+  cidade: z.string().nullable().optional(),
+  estado: z.string().nullable().optional(),
+  cep: z.string().nullable().optional(),
+  naturezaJuridica: z.string().nullable().optional(),
+  porte: z.string().nullable().optional(),
+  dataAbertura: z.string().nullable().optional(),
+  capitalSocial: z.string().nullable().optional(),
+  situacao: z.string().nullable().optional(),
+  atividadePrincipal: z.string().nullable().optional(),
+  atividadeSecundaria: z.string().nullable().optional(),
+  simplesNacional: z.boolean().nullable().optional(),
+  empresaMEI: z.boolean().nullable().optional(),
+  socios: z.string().nullable().optional(),
+  site: z.string().url('URL inválida').nullable().optional(),
+  observacoes: z.string().nullable().optional(),
+});
 
 router.get('/', async (req: AuthRequest, res) => {
   try {
@@ -30,14 +55,17 @@ router.get('/:id', async (req: AuthRequest, res) => {
 
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } = req.body;
-    if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
+    const parsed = empresaSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const { nome, cnpj, ...rest } = parsed.data;
     if (cnpj) {
       const existing = await prisma.empresa.findFirst({ where: { userId: req.userId!, cnpj, ativo: true } });
       if (existing) return res.status(409).json({ error: 'Empresa com este CNPJ já cadastrada' });
     }
     const empresa = await prisma.empresa.create({
-      data: { userId: req.userId!, nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes },
+      data: { userId: req.userId!, nome, cnpj, ...rest },
     });
     res.status(201).json(empresa);
   } catch (err: any) {
@@ -50,8 +78,11 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const id = String(req.params.id);
     const existing = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
     if (!existing) return res.status(404).json({ error: 'Empresa não encontrada' });
-    const { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } = req.body;
-    const empresa = await prisma.empresa.update({ where: { id }, data: { nome, cnpj, endereco, telefone, email, bairro, cidade, estado, cep, naturezaJuridica, porte, dataAbertura, capitalSocial, situacao, atividadePrincipal, atividadeSecundaria, simplesNacional, empresaMEI, socios, site, observacoes } });
+    const parsed = empresaSchema.partial().safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
+    }
+    const empresa = await prisma.empresa.update({ where: { id }, data: parsed.data });
     res.json(empresa);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
