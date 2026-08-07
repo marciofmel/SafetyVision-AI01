@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: safetyvision-ai
+    runtime: node
+    plan: free
+    buildCommand: |
+      cd frontend && npm install && npm run build && cp -r dist/* ../backend/frontend/
+      cd ../backend && npm install && npx prisma generate && npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npx tsc
+    startCommand: cd backend && node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: "*"
