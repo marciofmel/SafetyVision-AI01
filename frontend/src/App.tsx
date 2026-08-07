@@ -22,6 +22,10 @@ import CalculadoraNR28 from './pages/tecnico/CalculadoraNR28';
 import EpiTecnico from './pages/tecnico/EpiTecnico';
 import TreinamentosTecnico from './pages/tecnico/TreinamentosTecnico';
 import IncidentesTecnico from './pages/tecnico/IncidentesTecnico';
+import CronogramaTecnico from './pages/tecnico/CronogramaTecnico';
+import PGRTecnico from './pages/tecnico/PGRTecnico';
+import LaudosTecnico from './pages/tecnico/LaudosTecnico';
+import ConformidadeTecnico from './pages/tecnico/ConformidadeTecnico';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
@@ -86,6 +90,10 @@ export default function App() {
         <Route path="epis" element={<EpiTecnico />} />
         <Route path="treinamentos" element={<TreinamentosTecnico />} />
         <Route path="incidentes" element={<IncidentesTecnico />} />
+        <Route path="cronograma" element={<CronogramaTecnico />} />
+        <Route path="pgr" element={<PGRTecnico />} />
+        <Route path="laudos" element={<LaudosTecnico />} />
+        <Route path="conformidade" element={<ConformidadeTecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>

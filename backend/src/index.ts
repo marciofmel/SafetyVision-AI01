@@ -18,6 +18,10 @@ import exportRoutes from './routes/export';
 import episRoutes from './routes/epis';
 import treinamentosRoutes from './routes/treinamentos';
 import incidentesRoutes from './routes/incidentes';
+import cronogramasRoutes from './routes/cronogramas';
+import pgrRoutes from './routes/pgr';
+import laudosRoutes from './routes/laudos';
+import conformidadeRoutes from './routes/conformidade';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -41,6 +45,10 @@ app.use('/api/export', authMiddleware, exportRoutes);
 app.use('/api/epis', authMiddleware, episRoutes);
 app.use('/api/treinamentos', authMiddleware, treinamentosRoutes);
 app.use('/api/incidentes', authMiddleware, incidentesRoutes);
+app.use('/api/cronogramas', authMiddleware, cronogramasRoutes);
+app.use('/api/pgr', authMiddleware, pgrRoutes);
+app.use('/api/laudos', authMiddleware, laudosRoutes);
+app.use('/api/conformidade', authMiddleware, conformidadeRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

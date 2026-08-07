@@ -26,6 +26,8 @@ model User {
   treinamentos  Treinamento[]
   incidentes    Incidente[]
   laudos        Laudo[]
+  cronogramas   CronogramaInspecoes[]
+  pgrs          PGR[]
 }
 
 model Empresa {
@@ -60,8 +62,10 @@ model Empresa {
   colaboradores       Colaborador[]
   epis                Epi[]
   treinamentos        Treinamento[]
-  incidentes          Incidente[]
-  laudos              Laudo[]
+  incidentes   Incidente[]
+  laudos       Laudo[]
+  cronogramas  CronogramaInspecoes[]
+  pgrs         PGR[]
 }
 
 model Setor {
@@ -309,7 +313,80 @@ model Laudo {
   conteudo        String?
   dataEmissao     DateTime  @default(now())
   responsavel     String?
+  responsavelCargo String?
+  responsavelCPF  String?
   aprovado        Boolean   @default(false)
+  assinaturaDigital String?
   arquivoUrl      String?
+  conteudoHtml    String?
+  createdAt       DateTime  @default(now())
+}
+
+model CronogramaInspecoes {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  titulo          String
+  descricao       String?
+  nr              String?
+  frequencia      String
+  diaSemana       Int?
+  diaMes          Int?
+  horaPreferida   String?
+  proximaData     DateTime?
+  ultimaData      DateTime?
+  responsavelId   String?
+  ativo           Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  inspecoes       InspecoesAgendadas[]
+}
+
+model InspecoesAgendadas {
+  id              String    @id @default(cuid())
+  cronogramaId    String
+  cronograma      CronogramaInspecoes @relation(fields: [cronogramaId], references: [id], onDelete: Cascade)
+  dataAgendada    DateTime
+  dataRealizada   DateTime?
+  status          String    @default("pendente")
+  inspecaoId      String?
+  observacao      String?
+  createdAt       DateTime  @default(now())
+}
+
+model PGR {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  titulo          String
+  descricao       String?
+  revisao         Int       @default(1)
+  dataRevisao     DateTime  @default(now())
+  vigenciaInicio  DateTime?
+  vigenciaFim     DateTime?
+  responsavel     String?
+  aprovado        Boolean   @default(false)
+  conteudoHtml    String?
+  createdAt       DateTime  @default(now())
+  itens           PGRItem[]
+}
+
+model PGRItem {
+  id              String    @id @default(cuid())
+  pgrId           String
+  pgr             PGR       @relation(fields: [pgrId], references: [id], onDelete: Cascade)
+  processo        String
+  perigo          String
+  riscos          String
+  medidasControle String?
+  riscoResidual   String?
+  prioridade      String?
+  norma           String?
+  responsavel     String?
+  prazo           DateTime?
+  status          String    @default("pendente")
   createdAt       DateTime  @default(now())
 }
