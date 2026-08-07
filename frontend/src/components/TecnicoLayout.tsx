@@ -177,6 +177,18 @@ export default function TecnicoLayout() {
           <FiBarChart2 size={20} />
           <span>Conformidade</span>
         </NavLink>
+        <NavLink
+          to="/tecnico/planos"
+          onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20' : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+            }`
+          }
+        >
+          <FiDollarSign size={20} />
+          <span>Planos</span>
+        </NavLink>
 
         <p className="mb-3 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-navy-300">Sistema</p>
         <NavLink

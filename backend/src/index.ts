@@ -22,6 +22,8 @@ import cronogramasRoutes from './routes/cronogramas';
 import pgrRoutes from './routes/pgr';
 import laudosRoutes from './routes/laudos';
 import conformidadeRoutes from './routes/conformidade';
+import planosRoutes from './routes/planos';
+import dashboardAdminRoutes from './routes/dashboardAdmin';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -49,6 +51,8 @@ app.use('/api/cronogramas', authMiddleware, cronogramasRoutes);
 app.use('/api/pgr', authMiddleware, pgrRoutes);
 app.use('/api/laudos', authMiddleware, laudosRoutes);
 app.use('/api/conformidade', authMiddleware, conformidadeRoutes);
+app.use('/api/planos', authMiddleware, planosRoutes);
+app.use('/api/dashboard-admin', authMiddleware, dashboardAdminRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

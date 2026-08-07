@@ -28,6 +28,36 @@ model User {
   laudos        Laudo[]
   cronogramas   CronogramaInspecoes[]
   pgrs          PGR[]
+  planos        PlanoUsuario[]
+}
+
+model Plano {
+  id            String    @id @default(cuid())
+  nome          String
+  descricao     String?
+  preco         Float
+  periodo       String    @default("mensal")
+  limiteEmpresas Int      @default(1)
+  limiteInspecoes Int     @default(10)
+  limiteUsuarios Int     @default(1)
+  features      String?
+  ativo         Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  usuarios      PlanoUsuario[]
+}
+
+model PlanoUsuario {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  planoId       String
+  plano         Plano     @relation(fields: [planoId], references: [id])
+  dataInicio    DateTime  @default(now())
+  dataFim       DateTime?
+  status        String    @default("ativo")
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Empresa {

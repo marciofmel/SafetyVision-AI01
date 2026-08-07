@@ -26,6 +26,8 @@ import CronogramaTecnico from './pages/tecnico/CronogramaTecnico';
 import PGRTecnico from './pages/tecnico/PGRTecnico';
 import LaudosTecnico from './pages/tecnico/LaudosTecnico';
 import ConformidadeTecnico from './pages/tecnico/ConformidadeTecnico';
+import PlanosTecnico from './pages/tecnico/PlanosTecnico';
+import DashboardAdminGlobal from './pages/admin/DashboardAdminGlobal';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
@@ -65,7 +67,7 @@ export default function App() {
 
       <Route path="/admin/login" element={<LoginAdmin />} />
       <Route path="/admin" element={<PrivateRoute requiredRole="Admin"><AdminLayout /></PrivateRoute>}>
-        <Route index element={<DashboardAdmin />} />
+        <Route index element={<DashboardAdminGlobal />} />
         <Route path="empresas" element={<EmpresasAdmin />} />
         <Route path="setores" element={<SetoresAdmin />} />
         <Route path="colaboradores" element={<ColaboradoresAdmin />} />
@@ -94,6 +96,7 @@ export default function App() {
         <Route path="pgr" element={<PGRTecnico />} />
         <Route path="laudos" element={<LaudosTecnico />} />
         <Route path="conformidade" element={<ConformidadeTecnico />} />
+        <Route path="planos" element={<PlanosTecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>
