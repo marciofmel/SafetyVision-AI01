@@ -99,13 +99,13 @@ export default function IncidentesTecnico() {
     setLoading(true);
     try {
       const payload: any = {
-        data: form.data, descricao: form.descricao.trim(), tipo: form.tipo,
+        dataIncidente: form.data, descricao: form.descricao.trim(), tipo: form.tipo,
         gravidade: form.gravidade, empresaId: form.empresaId,
-        setorId: form.setorId || null, colaboradorId: form.colaboradorId || null,
-        local: form.local || null, danos: form.danos || null, causas: form.causas || null,
+        setorId: form.setorId || null, colaboradoresEnvolvidos: form.colaboradorId || null,
+        localIncidente: form.local || null, danos: form.danos || null, causas: form.causas || null,
         acoesCorretivas: form.acoesCorretivas || null,
-        registroCAT: form.registroCAT === 'sim', numeroCAT: form.numeroCAT || null,
-        dataNotificacao: form.dataNotificacao || null,
+        catNumero: form.numeroCAT || null,
+        catData: form.dataNotificacao || null,
       };
       if (editingId) {
         await api.put(`/incidentes/${editingId}`, payload);
