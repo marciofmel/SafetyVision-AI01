@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase, FiCheckSquare, FiDollarSign, FiBook, FiAlertCircle, FiCalendar, FiFileText, FiBarChart2 } from 'react-icons/fi';
+import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase, FiCheckSquare, FiDollarSign, FiBook, FiAlertCircle, FiCalendar, FiFileText, FiBarChart2, FiHeart, FiUsers } from 'react-icons/fi';
 
 export default function TecnicoLayout() {
   const { user, logout } = useAuth();
@@ -126,6 +126,30 @@ export default function TecnicoLayout() {
         >
           <FiAlertCircle size={20} />
           <span>Incidentes</span>
+        </NavLink>
+        <NavLink
+          to="/tecnico/asos"
+          onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20' : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+            }`
+          }
+        >
+          <FiHeart size={20} />
+          <span>ASOs</span>
+        </NavLink>
+        <NavLink
+          to="/tecnico/cipa"
+          onClick={() => setSidebarOpen(false)}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+              isActive ? 'bg-navy-900 text-amber-400 shadow-lg shadow-navy-900/20' : 'text-navy-500 hover:bg-navy-50 hover:text-navy-700'
+            }`
+          }
+        >
+          <FiUsers size={20} />
+          <span>CIPA</span>
         </NavLink>
 
         <p className="mb-3 mt-6 px-3 text-[10px] font-bold uppercase tracking-widest text-navy-300">Premium</p>

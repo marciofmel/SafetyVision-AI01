@@ -27,6 +27,8 @@ import PGRTecnico from './pages/tecnico/PGRTecnico';
 import LaudosTecnico from './pages/tecnico/LaudosTecnico';
 import ConformidadeTecnico from './pages/tecnico/ConformidadeTecnico';
 import PlanosTecnico from './pages/tecnico/PlanosTecnico';
+import ASOTecnico from './pages/tecnico/ASOTecnico';
+import CIPATecnico from './pages/tecnico/CIPATecnico';
 import DashboardAdminGlobal from './pages/admin/DashboardAdminGlobal';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
@@ -97,6 +99,8 @@ export default function App() {
         <Route path="laudos" element={<LaudosTecnico />} />
         <Route path="conformidade" element={<ConformidadeTecnico />} />
         <Route path="planos" element={<PlanosTecnico />} />
+        <Route path="asos" element={<ASOTecnico />} />
+        <Route path="cipa" element={<CIPATecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
       </Route>

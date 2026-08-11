@@ -24,6 +24,9 @@ import laudosRoutes from './routes/laudos';
 import conformidadeRoutes from './routes/conformidade';
 import planosRoutes from './routes/planos';
 import dashboardAdminRoutes from './routes/dashboardAdmin';
+import asoRoutes from './routes/aso';
+import cipaRoutes from './routes/cipa';
+import alertasRoutes from './routes/alertas';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -53,6 +56,9 @@ app.use('/api/laudos', authMiddleware, laudosRoutes);
 app.use('/api/conformidade', authMiddleware, conformidadeRoutes);
 app.use('/api/planos', authMiddleware, planosRoutes);
 app.use('/api/dashboard-admin', authMiddleware, dashboardAdminRoutes);
+app.use('/api/asos', authMiddleware, asoRoutes);
+app.use('/api/cipa', authMiddleware, cipaRoutes);
+app.use('/api/alertas', authMiddleware, alertasRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

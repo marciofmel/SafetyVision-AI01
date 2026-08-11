@@ -29,6 +29,9 @@ model User {
   cronogramas   CronogramaInspecoes[]
   pgrs          PGR[]
   planos        PlanoUsuario[]
+  asos          ASO[]
+  cipas         CIPA[]
+  alertas       Alerta[]
 }
 
 model Plano {
@@ -96,6 +99,9 @@ model Empresa {
   laudos       Laudo[]
   cronogramas  CronogramaInspecoes[]
   pgrs         PGR[]
+  asos         ASO[]
+  cipas        CIPA[]
+  alertas      Alerta[]
 }
 
 model Setor {
@@ -136,6 +142,7 @@ model Colaborador {
   createdAt       DateTime  @default(now())
   episEntregas    EpiEntrega[]
   treinamentos    TreinamentoParticipacao[]
+  asos            ASO[]
 }
 
 model Inspecao {
@@ -419,4 +426,77 @@ model PGRItem {
   prazo           DateTime?
   status          String    @default("pendente")
   createdAt       DateTime  @default(now())
+}
+
+model ASO {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  colaboradorId   String
+  colaborador     Colaborador @relation(fields: [colaboradorId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  tipoExame       String    @default("admissional")
+  dataExame       DateTime
+  validoAte       DateTime
+  medico          String?
+  crm             String?
+  resultado       String    @default("apto")
+  restricoes      String?
+  examesComplementares String?
+  observacoes     String?
+  arquivoUrl      String?
+  status          String    @default("valido")
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([colaboradorId])
+  @@index([empresaId])
+}
+
+model CIPA {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  nome            String
+  cnpj            String?
+  cnae            String?
+  grauRisco       String?
+  efetivo         Int?
+  siprat          Int?
+  dadosAtuais     String?
+  mandatoInicio   DateTime?
+  mandatoFim      DateTime?
+  eleicaoData     DateTime?
+  eleicaoAta      String?
+  reunioes        String?
+  observacoes     String?
+  ativo           Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([empresaId])
+}
+
+model Alerta {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  empresaId       String?
+  empresa         Empresa?  @relation(fields: [empresaId], references: [id])
+  tipo            String
+  titulo          String
+  descricao       String
+  dataAlerta      DateTime  @default(now())
+  dataVencimento  DateTime?
+  lido            Boolean   @default(false)
+  resolvido       Boolean   @default(false)
+  entidadeTipo    String?
+  entidadeId      String?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([empresaId])
 }
