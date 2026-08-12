@@ -15,24 +15,24 @@ export default function SetoresAdmin() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/setores').catch(() => ({ data: [] })),
-      api.get('/empresas').catch(() => ({ data: [] })),
+      api.get('/admin-data/setores').catch(() => ({ data: [] })),
+      api.get('/admin-data/empresas').catch(() => ({ data: [] })),
     ]).then(([s, e]) => { setSetores(s.data); setEmpresas(e.data); });
   }, []);
 
-  const load = () => api.get('/setores').then(({ data }) => setSetores(data)).catch(() => {});
+  const load = () => api.get('/admin-data/setores').then(({ data }) => setSetores(data)).catch(() => {});
 
   const handleSave = async (id?: string) => {
     try {
-      if (id) { await api.put(`/setores/${id}`, form); toast.success('Setor atualizado!'); }
-      else { await api.post('/setores', form); toast.success('Setor criado!'); }
+      if (id) { await api.put(`/admin-data/setores/${id}`, form); toast.success('Setor atualizado!'); }
+      else { await api.post('/admin-data/setores', form); toast.success('Setor criado!'); }
       setShowNew(false); setEditingId(null); setForm({ nome: '', descricao: '', empresaId: '' }); load();
     } catch (err: any) { toast.error(err.response?.data?.error || 'Erro ao salvar'); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza?')) return;
-    try { await api.delete(`/setores/${id}`); toast.success('Setor removido!'); load(); } catch { toast.error('Erro ao remover'); }
+    try { await api.delete(`/admin-data/setores/${id}`); toast.success('Setor removido!'); load(); } catch { toast.error('Erro ao remover'); }
   };
 
   const FormRow = ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (

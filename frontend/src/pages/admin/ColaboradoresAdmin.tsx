@@ -17,25 +17,25 @@ export default function ColaboradoresAdmin() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/colaboradores').catch(() => ({ data: [] })),
-      api.get('/empresas').catch(() => ({ data: [] })),
-      api.get('/setores').catch(() => ({ data: [] })),
+      api.get('/admin-data/colaboradores').catch(() => ({ data: [] })),
+      api.get('/admin-data/empresas').catch(() => ({ data: [] })),
+      api.get('/admin-data/setores').catch(() => ({ data: [] })),
     ]).then(([c, e, s]) => { setColabs(c.data); setEmpresas(e.data); setSetores(s.data); });
   }, []);
 
-  const load = () => api.get('/colaboradores').then(({ data }) => setColabs(data)).catch(() => {});
+  const load = () => api.get('/admin-data/colaboradores').then(({ data }) => setColabs(data)).catch(() => {});
 
   const handleSave = async (id?: string) => {
     try {
-      if (id) { await api.put(`/colaboradores/${id}`, form); toast.success('Colaborador atualizado!'); }
-      else { await api.post('/colaboradores', form); toast.success('Colaborador criado!'); }
+      if (id) { await api.put(`/admin-data/colaboradores/${id}`, form); toast.success('Colaborador atualizado!'); }
+      else { await api.post('/admin-data/colaboradores', form); toast.success('Colaborador criado!'); }
       setShowNew(false); setEditingId(null); setForm({ nome: '', cargo: '', setorId: '', empresaId: '' }); load();
     } catch (err: any) { toast.error(err.response?.data?.error || 'Erro ao salvar'); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza?')) return;
-    try { await api.delete(`/colaboradores/${id}`); toast.success('Colaborador removido!'); load(); } catch { toast.error('Erro ao remover'); }
+    try { await api.delete(`/admin-data/colaboradores/${id}`); toast.success('Colaborador removido!'); load(); } catch { toast.error('Erro ao remover'); }
   };
 
   const FormRow = ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (

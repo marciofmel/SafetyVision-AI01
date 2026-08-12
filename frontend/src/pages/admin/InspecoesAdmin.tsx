@@ -9,7 +9,7 @@ export default function InspecoesAdmin() {
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
   const [filtro, setFiltro] = useState('todas');
 
-  useEffect(() => { api.get('/inspecoes').then(({ data }) => setInspecoes(data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/admin-data/inspecoes').then(({ data }) => setInspecoes(data)).catch(() => {}); }, []);
 
   const filtradas = inspecoes.filter((i) => filtro === 'todas' || i.status === filtro);
 

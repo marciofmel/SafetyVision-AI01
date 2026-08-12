@@ -12,19 +12,19 @@ export default function EmpresasAdmin() {
   const [showNew, setShowNew] = useState(false);
 
   useEffect(() => { load(); }, []);
-  const load = () => api.get('/empresas').then(({ data }) => setEmpresas(data)).catch(() => {});
+  const load = () => api.get('/admin-data/empresas').then(({ data }) => setEmpresas(data)).catch(() => {});
 
   const handleSave = async (id?: string) => {
     try {
-      if (id) { await api.put(`/empresas/${id}`, form); toast.success('Empresa atualizada!'); }
-      else { await api.post('/empresas', form); toast.success('Empresa criada!'); }
+      if (id) { await api.put(`/admin-data/empresas/${id}`, form); toast.success('Empresa atualizada!'); }
+      else { await api.post('/admin-data/empresas', form); toast.success('Empresa criada!'); }
       setShowNew(false); setEditingId(null); setForm({ nome: '', cnpj: '', endereco: '', telefone: '', email: '' }); load();
     } catch (err: any) { toast.error(err.response?.data?.error || 'Erro ao salvar'); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza?')) return;
-    try { await api.delete(`/empresas/${id}`); toast.success('Empresa removida!'); load(); } catch { toast.error('Erro ao remover'); }
+    try { await api.delete(`/admin-data/empresas/${id}`); toast.success('Empresa removida!'); load(); } catch { toast.error('Erro ao remover'); }
   };
 
   const FormFields = () => (
