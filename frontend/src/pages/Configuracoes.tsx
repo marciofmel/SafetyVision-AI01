@@ -22,11 +22,13 @@ export default function Configuracoes() {
   const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', endereco: '', telefone: '', email: '' });
 
   useEffect(() => {
-    api.get('/empresas').then(({ data }) => {
+    const isAdmin = user?.cargo === 'Admin' || user?.cargo === 'Administrador';
+    const url = isAdmin ? '/admin-data/empresas' : '/empresas';
+    api.get(url).then(({ data }) => {
       setEmpresas(data);
       if (data.length > 0) { setEmpresaSel(data[0]); setEmpresaForm(data[0]); }
     }).catch(() => {});
-  }, []);
+  }, [user]);
 
   useEffect(() => { setNome(user?.nome || ''); setEmail(user?.email || ''); setFoto(user?.foto || ''); setPreview(user?.foto || ''); }, [user]);
 
@@ -56,7 +58,9 @@ export default function Configuracoes() {
   const handleSaveEmpresa = async () => {
     if (!empresaSel) return;
     try {
-      await api.put(`/empresas/${empresaSel.id}`, empresaForm);
+      const isAdmin = user?.cargo === 'Admin' || user?.cargo === 'Administrador';
+      const url = isAdmin ? `/admin-data/empresas/${empresaSel.id}` : `/empresas/${empresaSel.id}`;
+      await api.put(url, empresaForm);
       toast.success('Empresa atualizada com sucesso!');
       setEmpresas((prev) => prev.map((e) => (e.id === empresaSel.id ? { ...e, ...empresaForm } : e)));
     } catch (err: any) { toast.error(err.response?.data?.error || 'Erro ao salvar empresa'); }
@@ -174,12 +178,12 @@ export default function Configuracoes() {
                   <span className="rounded-full bg-navy-100 px-3 py-1 text-xs font-bold text-navy-700">v1.0.0</span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-navy-100 p-4">
-                  <div className="flex items-center gap-3"><FiCheckCircle size={20} className="text-success-600" /><div><p className="text-sm font-semibold text-navy-900">Backend</p><p className="text-xs text-navy-500">Express + Prisma + SQLite</p></div></div>
+                  <div className="flex items-center gap-3"><FiCheckCircle size={20} className="text-success-600" /><div><p className="text-sm font-semibold text-navy-900">Backend</p><p className="text-xs text-navy-500">Express + Prisma + PostgreSQL</p></div></div>
                   <span className="rounded-full bg-success-100 px-3 py-1 text-xs font-bold text-success-700">Online</span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-navy-100 p-4">
-                  <div className="flex items-center gap-3"><FiInfo size={20} className="text-navy-400" /><div><p className="text-sm font-semibold text-navy-900">IA</p><p className="text-xs text-navy-500">Simulação de análise de riscos</p></div></div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">Simulada</span>
+                  <div className="flex items-center gap-3"><FiInfo size={20} className="text-navy-400" /><div><p className="text-sm font-semibold text-navy-900">IA</p><p className="text-xs text-navy-500">Análise de riscos com OpenAI</p></div></div>
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">GPT Vision</span>
                 </div>
                 <div className="rounded-xl border border-navy-100 p-4">
                   <p className="mb-2 text-sm font-semibold text-navy-900">NRs Cobertas</p>
