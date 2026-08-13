@@ -19,6 +19,7 @@ router.get('/', authMiddleware, async (req: any, res) => {
     if (!(await requireAdmin(req, res))) return;
 
     const users = await prisma.user.findMany({
+      where: { ativo: true },
       select: { id: true, nome: true, email: true, cargo: true, foto: true, ativo: true, createdAt: true },
       orderBy: { createdAt: 'desc' },
     });
