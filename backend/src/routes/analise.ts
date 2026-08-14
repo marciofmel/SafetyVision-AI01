@@ -113,6 +113,13 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
       }
     }
 
+    if (fotos.length > 0 && erros.length === fotos.length) {
+      return res.status(502).json({
+        error: 'Não foi possível analisar as fotos. Verifique a configuração da IA no servidor.',
+        detalhes: erros,
+      });
+    }
+
     const totalRiscos = todosRiscos.length;
     const riscosGraves = todosRiscos.filter(r => r.gravidade === 'critica' || r.gravidade === 'alta').length;
     const nota = Math.max(0, Math.min(100, 100 - (totalRiscos * 8) - (riscosGraves * 12)));

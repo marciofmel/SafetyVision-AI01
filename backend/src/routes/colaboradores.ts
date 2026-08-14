@@ -3,7 +3,7 @@ import { z } from 'zod';
 import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 import multer from 'multer';
-import OpenAI from 'openai';
+import { geminiConfigurada, geminiMidia, extrairJsonArray } from '../services/gemini';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -110,39 +110,15 @@ router.post('/importar-pdf', upload.single('file'), async (req: AuthRequest, res
     const empresa = await prisma.empresa.findFirst({ where: { id: empresaId, userId: req.userId! } });
     if (!empresa) return res.status(400).json({ error: 'Empresa não encontrada' });
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Chave OpenAI não configurada' });
+    if (!geminiConfigurada()) return res.status(500).json({ error: 'Chave de IA não configurada' });
 
     const base64 = req.file.buffer.toString('base64');
     const mimeType = req.file.mimetype === 'application/pdf' ? 'application/pdf' : 'image/png';
 
-    const openai = new OpenAI({ apiKey });
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Extraia TODOS os colaboradores/funcionários deste documento. Para cada pessoa, retorne um JSON array com objetos contendo: nome, cpf, rg, cargo, telefone, email, dataNascimento, admissao, matricula, aso (se disponível). Se um campo não for encontrado, use null. Retorne APENAS o JSON array, sem texto explicativo. Formato: [{"nome":"...","cpf":"...","rg":"...","cargo":"...","telefone":"...","email":"...","dataNascimento":"...","admissao":"...","matricula":"...","aso":"..."}]`
-            },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64}` },
-            },
-          ],
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 8000,
-    });
+    const prompt = `Extraia TODOS os colaboradores/funcionários deste documento. Para cada pessoa, retorne um JSON array com objetos contendo: nome, cpf, rg, cargo, telefone, email, dataNascimento, admissao, matricula, aso (se disponível). Se um campo não for encontrado, use null. Retorne APENAS o JSON array, sem texto explicativo. Formato: [{"nome":"...","cpf":"...","rg":"...","cargo":"...","telefone":"...","email":"...","dataNascimento":"...","admissao":"...","matricula":"...","aso":"..."}]`;
 
-    const content = response.choices[0]?.message?.content || '[]';
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return res.status(400).json({ error: 'Não foi possível extrair dados do PDF' });
-
-    const extracted = JSON.parse(jsonMatch[0]);
+    const content = await geminiMidia(prompt, mimeType, base64);
+    const extracted = extrairJsonArray(content);
     let criados = 0;
     let erros: string[] = [];
 

@@ -109,6 +109,18 @@ export default function AnaliseIA() {
         ))}
       </div>
 
+      {resultado.erros?.length > 0 && (
+        <div className="mb-6 rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
+          <div className="mb-2 flex items-center gap-2">
+            <FiAlertTriangle className="text-amber-600" size={18} />
+            <h2 className="font-bold text-navy-900">Alguns arquivos não puderam ser analisados</h2>
+          </div>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-amber-700">
+            {resultado.erros.map((e: string, i: number) => <li key={i}>{e}</li>)}
+          </ul>
+        </div>
+      )}
+
       {/* EPIs */}
       {resultado.epiViolacoesList?.length > 0 && (
         <div className="card mb-6 p-6">

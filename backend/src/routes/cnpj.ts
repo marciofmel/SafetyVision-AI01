@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import https from 'https';
 import http from 'http';
+import { geminiConfigurada, geminiTexto, extrairJson } from '../services/gemini';
 
 const router = Router();
 
@@ -40,8 +41,7 @@ function fetchText(url: string): Promise<string> {
 }
 
 async function searchWithAI(cnpj: string, brasilData: any): Promise<any> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
+  if (!geminiConfigurada()) return null;
 
   const empresaNome = brasilData?.razao_social || brasilData?.nome || '';
   const nomeFantasia = brasilData?.nome_fantasia || '';
@@ -60,6 +60,8 @@ Dados já conhecidos da BrasilAPI:
 - Email: ${brasilData?.email || ''}
 - Situação: ${brasilData?.descricao_situacao_cadastral || ''}
 - Atividade: ${brasilData?.cnae_fiscal_descricao || ''}
+
+Busca sugerida: ${searchQuery}
 
 RETORNE um JSON com TODAS as informações que você conhece sobre esta empresa. Inclua:
 - nome: razão social
@@ -83,44 +85,14 @@ RETORNE um JSON com TODAS as informações que você conhece sobre esta empresa.
 - socios: nomes dos sócios (se souber)
 - observacoes: qualquer informação adicional relevante
 
-IMPORTANTE: Use APENAS dados reais que você KNOW com certeza. Se não souber algo, deixe vazio. NUNCA invente dados.
+IMPORTANTE: Use APENAS dados reais que você conhece com certeza. Se não souber algo, deixe vazio. NUNCA invente dados.
 Retorne APENAS o JSON, sem texto adicional.`;
 
   try {
-    const response = await new Promise<any>((resolve, reject) => {
-      const postData = JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1,
-        max_tokens: 1000,
-      });
-
-      const req = https.request({
-        hostname: 'api.openai.com',
-        path: '/v1/chat/completions',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData),
-        },
-        timeout: 15000,
-      }, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          try { resolve(JSON.parse(data)); } catch { reject(new Error('Parse error')); }
-        });
-      });
-      req.on('error', reject);
-      req.write(postData);
-      req.end();
-    });
-
-    const content = response?.choices?.[0]?.message?.content || '';
+    const content = await geminiTexto(prompt);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      return extrairJson(content);
     }
   } catch (err: any) {
     console.log('AI search fallback:', err.message);

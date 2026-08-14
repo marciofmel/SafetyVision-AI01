@@ -1,9 +1,7 @@
-import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
-
-const OPENAI_KEY = process.env.OPENAI_API_KEY || '';
+import { geminiConfigurada, geminiMidia, extrairJson } from './gemini';
 
 interface AnaliseResultado {
   riscos: RiscoDetectado[];
@@ -42,26 +40,37 @@ async function getDimensions(imagemPath: string): Promise<{ w: number; h: number
   }
 }
 
+function normalizeKeys(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(normalizeKeys);
+  if (obj && typeof obj === 'object') {
+    const out: any = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const k2 = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      out[k2] = normalizeKeys(v);
+    }
+    return out;
+  }
+  return obj;
+}
+
 export async function analisarImagem(
   imagemPath: string,
   nomeArquivo: string
 ): Promise<AnaliseResultado> {
-  if (!OPENAI_KEY) {
-    throw new Error('Chave de API não configurada. Configure OPENAI_API_KEY no painel do Render.');
+  if (!geminiConfigurada()) {
+    throw new Error('Chave de API não configurada. Configure GEMINI_API_KEY no painel do Render.');
   }
 
-  const openai = new OpenAI({ apiKey: OPENAI_KEY });
   const imagemBuffer = fs.readFileSync(imagemPath);
   const imagemBase64 = imagemBuffer.toString('base64');
   const { w: imgW, h: imgH } = await getDimensions(imagemPath);
 
   const ext = path.extname(nomeArquivo).toLowerCase();
-  const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-  const dataUrl = `data:${mimeType};base64,${imagemBase64}`;
+  const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
 
   const prompt = `Você é um engenheiro de Segurança do Trabalho (SST) inspecionando um local de trabalho através de uma fotografia.
 
-Analise esta imagem COMO UM ESPECIALISTA EM SST e identifique TODOS os problemas de segurança, non-conformidades e riscos presentes.
+Analise esta imagem COMO UM ESPECIALISTA EM SST e identifique TODOS os problemas de segurança, não-conformidades e riscos presentes.
 
 Para CADA problema encontrado, forneça:
 1. Categoria do risco
@@ -110,28 +119,11 @@ IMPORTANTE:
 - Se não encontrar problema, retorne arrays vazios
 - NÃO invente problemas que não estão visíveis na imagem`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
-        ],
-      },
-    ],
-    max_tokens: 4000,
-    temperature: 0.1,
-  });
-
-  const text = response.choices[0]?.message?.content || '';
+  const text = await geminiMidia(prompt, mimeType, imagemBase64);
 
   let parsed: AnaliseResultado;
   try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Nenhum JSON encontrado na resposta da IA');
-    parsed = JSON.parse(jsonMatch[0]);
+    parsed = normalizeKeys(extrairJson(text));
   } catch {
     throw new Error('Resposta da IA em formato inválido. Tente novamente.');
   }
@@ -167,7 +159,7 @@ IMPORTANTE:
     }
   }
 
-  console.log(`Análise OpenAI concluída: ${parsed.riscos.length} riscos, ${parsed.epiViolacoes.length} EPIs`);
+  console.log(`Análise Gemini concluída: ${parsed.riscos.length} riscos, ${parsed.epiViolacoes.length} EPIs`);
   return parsed;
 }
 
