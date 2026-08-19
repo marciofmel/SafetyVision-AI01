@@ -1,16 +1,32 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+// Modelos alternativos usados automaticamente quando o principal fica indisponível (503/429/404)
+const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3-flash-preview,gemini-flash-lite-latest,gemini-pro-latest')
+  .split(',')
+  .map((m: string) => m.trim())
+  .filter(Boolean);
+
+const MAX_TENTATIVAS = 3;
 
 export function geminiConfigurada(): boolean {
   return !!GEMINI_KEY;
 }
 
-async function chamarGemini(prompt: string, partsExtra?: any[]): Promise<string> {
-  if (!GEMINI_KEY) {
-    throw new Error('Chave de API não configurada. Configure GEMINI_API_KEY no painel do Render.');
-  }
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`;
+function isRetryable(status: number, msg: string): boolean {
+  return (
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 408 ||
+    /UNAVAILABLE|high demand|RESOURCE_EXHAUSTED|temporar|AbortError|deadline|limit/i.test(msg)
+  );
+}
+
+async function chamarModelo(modelo: string, prompt: string, partsExtra?: any[]): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${GEMINI_KEY}`;
 
   const parts: any[] = [{ text: prompt }];
   if (partsExtra) parts.push(...partsExtra);
@@ -25,7 +41,7 @@ async function chamarGemini(prompt: string, partsExtra?: any[]): Promise<string>
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 90000);
 
   try {
     const res = await fetch(url, {
@@ -59,6 +75,40 @@ async function chamarGemini(prompt: string, partsExtra?: any[]): Promise<string>
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function chamarGemini(prompt: string, partsExtra?: any[]): Promise<string> {
+  if (!GEMINI_KEY) {
+    throw new Error('Chave de API não configurada. Configure GEMINI_API_KEY no painel do Render.');
+  }
+
+  const fila = [GEMINI_MODEL, ...FALLBACK_MODELS.filter((m: string) => m !== GEMINI_MODEL)];
+  let ultimoErro: any = new Error('Falha desconhecida na API Gemini');
+
+  for (const modelo of fila) {
+    for (let tentativa = 0; tentativa < MAX_TENTATIVAS; tentativa++) {
+      try {
+        const texto = await chamarModelo(modelo, prompt, partsExtra);
+        if (modelo !== GEMINI_MODEL) {
+          console.log(`Gemini: usado modelo de reserva "${modelo}"`);
+        }
+        return texto;
+      } catch (err: any) {
+        ultimoErro = err;
+        const status = Number(/(\d{3})\)/.exec(err.message)?.[1] || 0);
+        if (isRetryable(status, err.message) && tentativa < MAX_TENTATIVAS - 1) {
+          await sleep(1500 * (tentativa + 1));
+          continue;
+        }
+        if (status === 404 || status === 400) {
+          // modelo inexistente/indisponível p/ este usuário: pula para o próximo da fila
+          break;
+        }
+      }
+    }
+  }
+
+  throw ultimoErro;
 }
 
 export async function geminiTexto(prompt: string): Promise<string> {
