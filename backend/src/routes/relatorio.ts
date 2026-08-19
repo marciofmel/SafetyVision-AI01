@@ -74,6 +74,106 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
 
     doc.fontSize(8).fillColor('#475569').text(`Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR')}`, 50, 800, { align: 'center', width: 495 });
 
+    // =================== PÁGINA: RESUMO EXECUTIVO (FASE 7) ===================
+    doc.addPage();
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#0F172A').text('Resumo Executivo', 50, 40);
+    doc.moveTo(50, 62).lineTo(545, 62).strokeColor('#F59E0B').lineWidth(2).stroke();
+
+    let ry = 80;
+    doc.fontSize(12).font('Helvetica-Bold').fillColor('#0F172A').text('Panorama da Inspeção', 50, ry);
+    ry += 22;
+    const linhasResumo: [string, string][] = [
+      ['Empresa', inspecao.empresa.nome],
+      ['Setor', inspecao.setor.nome],
+      ['Técnico Responsável', inspecao.usuario.nome],
+      ['Data da Inspeção', new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')],
+      ['Riscos Identificados', String(inspecao.riscos.length)],
+      ['EPIs em desacordo', String(inspecao.epiViolacoes.filter(e => e.status !== 'correto').length)],
+      ['Nota de Conformidade', `${nota}/100`],
+      ['Status', inspecao.status],
+    ];
+    doc.fontSize(10).font('Helvetica');
+    for (const [k, v] of linhasResumo) {
+      doc.fillColor('#64748B').text(k, 60, ry, { width: 200 });
+      doc.fillColor('#0F172A').font('Helvetica-Bold').text(v, 280, ry, { width: 240 });
+      doc.font('Helvetica');
+      ry += 16;
+    }
+
+    // Matriz de risco (gravidade x prioridade)
+    ry += 10;
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#0F172A').text('Matriz de Risco', 50, ry);
+    ry += 24;
+
+    const gravidades = ['critica', 'alta', 'media', 'baixa'];
+    const gravLabel: Record<string, string> = { critica: 'Crítica', alta: 'Alta', media: 'Média', baixa: 'Baixa' };
+    const gravCor: Record<string, string> = { critica: '#DC2626', alta: '#EA580C', media: '#D97706', baixa: '#16A34A' };
+
+    // Cabeçalho da matriz
+    const mrowW = 240;
+    const mrowH = 26;
+    const mleft = 60;
+    const mtop = ry;
+    doc.rect(mleft, mtop, mrowW, mrowH).fillAndStroke('#0F172A', '#0F172A');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF').text('Gravidade', mleft + 8, mtop + 8);
+    doc.rect(mleft + mrowW, mtop, mrowW, mrowH).fillAndStroke('#0F172A', '#0F172A');
+    doc.text('Riscos Encontrados', mleft + mrowW + 8, mtop + 8);
+    doc.font('Helvetica');
+
+    gravidades.forEach((g, idx) => {
+      const y = mtop + mrowH + idx * mrowH;
+      const count = inspecao.riscos.filter(r => r.gravidade.toLowerCase() === g).length;
+      doc.rect(mleft, y, mrowW, mrowH).fillAndStroke('#F8FAFC', '#E2E8F0');
+      doc.circle(mleft + 16, y + mrowH / 2, 9).fill(gravCor[g]);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#0F172A').text(gravLabel[g], mleft + 32, y + 8);
+      doc.rect(mleft + mrowW, y, mrowW, mrowH).fillAndStroke(count > 0 ? '#FEF2F2' : '#F8FAFC', '#E2E8F0');
+      doc.text(`${count}`, mleft + mrowW + 8, y + 8);
+      doc.font('Helvetica');
+    });
+    ry = mtop + mrowH + gravidades.length * mrowH + 16;
+
+    // Prazos recomendados por gravidade
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#0F172A').text('Prazos Recomendados', 50, ry);
+    ry += 24;
+    const prazos: Record<string, string> = { critica: '1 a 7 dias', alta: '15 dias', media: '30 dias', baixa: '60 dias' };
+    const colW = [80, 60, 70, 80, 190];
+    const cLefts = [50, 135, 200, 275, 455];
+    const prazoHeads = ['Gravidade', 'Qtde', 'Prazo', 'Prioridade', 'Responsável'];
+    const totalW = colW.reduce((a, b) => a + b, 0);
+
+    doc.rect(50, ry, totalW, 24).fillAndStroke('#0F172A', '#0F172A');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#FFFFFF');
+    prazoHeads.forEach((h, i) => doc.text(h, cLefts[i] + 4, ry + 8));
+    doc.font('Helvetica');
+    ry += 24;
+
+    gravidades.forEach((g) => {
+      const count = inspecao.riscos.filter(r => r.gravidade.toLowerCase() === g).length;
+      if (count === 0) return;
+      const cor = gravCor[g];
+      doc.rect(50, ry, totalW, 22).fillAndStroke('#F8FAFC', '#E2E8F0');
+      doc.fontSize(9).font('Helvetica-Bold').fillColor(cor).text(gravLabel[g], cLefts[0] + 4, ry + 6);
+      doc.font('Helvetica').fillColor('#334155');
+      doc.text(`${count}`, cLefts[1] + 4, ry + 6);
+      doc.text(prazos[g], cLefts[2] + 4, ry + 6);
+      doc.text(g === 'critica' ? 'IMEDIATA' : g === 'alta' ? 'ALTA' : g === 'media' ? 'MÉDIA' : 'BAIXA', cLefts[3] + 4, ry + 6);
+      doc.text(`${inspecao.usuario.nome}`, cLefts[4] + 4, ry + 6, { width: colW[4] - 8 });
+      ry += 22;
+    });
+
+    if (inspecao.riscos.length === 0) {
+      doc.fontSize(10).font('Helvetica').fillColor('#16A34A').text('Nenhum risco foi identificado nesta inspeção. Ambiente dentro dos padrões esperados.', 50, ry + 8, { width: 495 });
+    }
+
+    // Observações do técnico
+    if (inspecao.observacoes) {
+      ry += 30;
+      if (ry > 720) { doc.addPage(); ry = 50; }
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#0F172A').text('Observações do Técnico', 50, ry);
+      ry += 20;
+      doc.fontSize(10).font('Helvetica').fillColor('#374151').text(inspecao.observacoes, 50, ry, { width: 495, height: 120, lineGap: 4 });
+    }
+
     // =================== PÁGINA 2: IMAGENS ANOTADAS ===================
     const imagensAnotadas = inspecao.midias
       .filter(m => m.tipo === 'foto')

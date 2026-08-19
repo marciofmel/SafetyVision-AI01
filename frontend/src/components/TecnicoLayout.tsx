@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase, FiCheckSquare, FiDollarSign, FiBook, FiAlertCircle, FiCalendar, FiFileText, FiBarChart2, FiHeart, FiUsers } from 'react-icons/fi';
+import NotificationBell from './NotificationBell';
 
 export default function TecnicoLayout() {
   const { user, logout } = useAuth();
@@ -289,7 +290,9 @@ export default function TecnicoLayout() {
             </div>
             <span className="text-sm font-bold text-navy-900">SafetyVision</span>
           </div>
-          <div className="relative" ref={menuRef}>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-navy-100">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 text-xs font-bold text-amber-400 overflow-hidden">
                 {user?.foto ? <img src={user.foto} alt="" className="h-full w-full object-cover" /> : user?.nome?.charAt(0)?.toUpperCase()}
@@ -311,11 +314,14 @@ export default function TecnicoLayout() {
               </div>
             )}
           </div>
+          </div>
         </div>
 
         {/* Header desktop */}
         <div className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-navy-100 bg-white px-8 lg:flex">
-          <div />
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+          </div>
           <div className="relative z-50" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-3 rounded-xl p-2 hover:bg-navy-50 transition-colors cursor-pointer">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-900 text-sm font-bold text-amber-400 overflow-hidden">

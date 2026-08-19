@@ -7,6 +7,10 @@ export default function Historico() {
   const [inspecoes, setInspecoes] = useState<any[]>([]);
   const [filtro, setFiltro] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('todos');
+  const [empresaFiltro, setEmpresaFiltro] = useState('');
+  const [periodoInicio, setPeriodoInicio] = useState('');
+  const [periodoFim, setPeriodoFim] = useState('');
+  const [gravidadeFiltro, setGravidadeFiltro] = useState('');
 
   useEffect(() => {
     api.get('/inspecoes').then(({ data }) => setInspecoes(data));
@@ -15,8 +19,14 @@ export default function Historico() {
   const filtradas = inspecoes.filter((i) => {
     const matchTexto = !filtro || i.empresa?.nome?.toLowerCase().includes(filtro.toLowerCase()) || i.setor?.nome?.toLowerCase().includes(filtro.toLowerCase());
     const matchStatus = statusFiltro === 'todos' || i.status === statusFiltro;
-    return matchTexto && matchStatus;
+    const matchEmpresa = !empresaFiltro || i.empresa?.id === empresaFiltro;
+    const data = new Date(i.createdAt);
+    const matchPeriodo = (!periodoInicio || data >= new Date(periodoInicio)) && (!periodoFim || data <= new Date(periodoFim));
+    const matchGravidade = !gravidadeFiltro || (i.riscos || []).some((r: any) => r.gravidade.toLowerCase() === gravidadeFiltro);
+    return matchTexto && matchStatus && matchEmpresa && matchPeriodo && matchGravidade;
   });
+
+  const empresas = Array.from(new Map(inspecoes.map((i) => [i.empresa?.id, i.empresa])).values()).filter(Boolean);
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     em_andamento: { label: 'Em Andamento', color: 'bg-amber-100 text-amber-700 border-amber-200' },
@@ -30,7 +40,7 @@ export default function Historico() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-extrabold text-navy-900">Histórico</h1>
-          <p className="mt-1 text-sm text-navy-500">{inspecoes.length} inspeção(ões) realizada(s)</p>
+          <p className="mt-1 text-sm text-navy-500">{filtradas.length} de {inspecoes.length} inspeção(ões)</p>
         </div>
         <Link to="/nova-inspecao" className="btn-primary">
           <FiPlus size={18} />
@@ -51,6 +61,10 @@ export default function Historico() {
               placeholder="Buscar por empresa ou setor..."
             />
           </div>
+          <select value={empresaFiltro} onChange={(e) => setEmpresaFiltro(e.target.value)} className="input-field">
+            <option value="">Todas as empresas</option>
+            {empresas.map((e: any) => <option key={e.id} value={e.id}>{e.nome}</option>)}
+          </select>
           <div className="flex items-center gap-2">
             <FiFilter size={16} className="text-navy-400" />
             {['todos', 'em_andamento', 'analisada', 'concluida'].map((s) => (
@@ -67,6 +81,30 @@ export default function Historico() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 border-t border-navy-100 pt-4 md:flex-row md:items-center">
+          <label className="flex items-center gap-2 text-xs font-semibold text-navy-600">
+            Período
+            <input type="date" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} className="input-field" />
+            <span className="text-navy-300">até</span>
+            <input type="date" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} className="input-field" />
+          </label>
+          <label className="flex items-center gap-2 text-xs font-semibold text-navy-600">
+            Gravidade do risco
+            <select value={gravidadeFiltro} onChange={(e) => setGravidadeFiltro(e.target.value)} className="input-field">
+              <option value="">Todas</option>
+              {['critica', 'alta', 'media', 'baixa'].map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </label>
+          {(periodoInicio || periodoFim || gravidadeFiltro || empresaFiltro) && (
+            <button
+              onClick={() => { setPeriodoInicio(''); setPeriodoFim(''); setGravidadeFiltro(''); setEmpresaFiltro(''); }}
+              className="rounded-lg bg-danger-50 px-3 py-2 text-xs font-bold text-danger-600 hover:bg-danger-100"
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
       </div>
 

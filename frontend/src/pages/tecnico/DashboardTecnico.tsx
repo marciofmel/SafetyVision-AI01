@@ -38,6 +38,31 @@ export default function DashboardTecnico() {
     }).catch(() => {});
   }, []);
 
+  const hoje = new Date();
+  const daqui30 = new Date();
+  daqui30.setDate(daqui30.getDate() + 30);
+
+  const [vencimentos, setVencimentos] = useState({ asosVencidos: 0, asosProximos: 0, episVencidos: 0, episProximos: 0, treinamentosPendentes: 0, treinamentosAtrasados: 0 });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [asos, epis, treinamentos] = await Promise.all([
+          api.get('/asos'),
+          api.get('/epis'),
+          api.get('/treinamentos'),
+        ]);
+        const asoVencidos = asos.data.filter((a: any) => a.validoAte && new Date(a.validoAte) < hoje).length;
+        const asoProx = asos.data.filter((a: any) => a.validoAte && new Date(a.validoAte) >= hoje && new Date(a.validoAte) <= daqui30).length;
+        const epiVencidos = epis.data.filter((e: any) => e.validadeCa && new Date(e.validadeCa) < hoje && e.status === 'ativo').length;
+        const epiProx = epis.data.filter((e: any) => e.validadeCa && new Date(e.validadeCa) >= hoje && new Date(e.validadeCa) <= daqui30 && e.status === 'ativo').length;
+        const treinAtrasados = treinamentos.data.filter((t: any) => t.dataFim && new Date(t.dataFim) < hoje && t.status !== 'concluido').length;
+        const treinPend = treinamentos.data.filter((t: any) => t.status === 'agendado' || t.status === 'pendente').length;
+        setVencimentos({ asosVencidos: asoVencidos, asosProximos: asoProx, episVencidos: epiVencidos, episProximos: epiProx, treinamentosPendentes: treinPend, treinamentosAtrasados: treinAtrasados });
+      } catch { /* silencioso */ }
+    })();
+  }, []);
+
   useEffect(() => {
     if (showPopup && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -332,6 +357,65 @@ export default function DashboardTecnico() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Vencimentos (FASE 7) */}
+      <div className="mb-8">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-navy-500">
+          <FiAlertTriangle size={16} className="text-amber-500" /> Vencimentos e Pendências
+        </h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link to="/tecnico/asos" className="card overflow-hidden transition-all hover:border-danger-200 hover:shadow-md">
+            <div className="flex items-center justify-between border-b border-navy-100 p-4">
+              <p className="text-sm font-bold text-navy-900">ASOs</p>
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-500">NR-7</span>
+            </div>
+            <div className="flex items-center justify-around p-4">
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-danger-600">{vencimentos.asosVencidos}</p>
+                <p className="text-[11px] font-semibold text-navy-400">Vencidos</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-amber-500">{vencimentos.asosProximos}</p>
+                <p className="text-[11px] font-semibold text-navy-400">Vencem em 30d</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/tecnico/epis" className="card overflow-hidden transition-all hover:border-danger-200 hover:shadow-md">
+            <div className="flex items-center justify-between border-b border-navy-100 p-4">
+              <p className="text-sm font-bold text-navy-900">EPIs</p>
+              <span className="rounded-full bg-navy-50 px-2 py-0.5 text-[10px] font-bold text-navy-500">CA</span>
+            </div>
+            <div className="flex items-center justify-around p-4">
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-danger-600">{vencimentos.episVencidos}</p>
+                <p className="text-[11px] font-semibold text-navy-400">CA Vencido</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-amber-500">{vencimentos.episProximos}</p>
+                <p className="text-[11px] font-semibold text-navy-400">Vencem em 30d</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link to="/tecnico/treinamentos" className="card overflow-hidden transition-all hover:border-danger-200 hover:shadow-md">
+            <div className="flex items-center justify-between border-b border-navy-100 p-4">
+              <p className="text-sm font-bold text-navy-900">Treinamentos</p>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-600">NRs</span>
+            </div>
+            <div className="flex items-center justify-around p-4">
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-danger-600">{vencimentos.treinamentosAtrasados}</p>
+                <p className="text-[11px] font-semibold text-navy-400">Atrasados</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-extrabold text-amber-500">{vencimentos.treinamentosPendentes}</p>
+                <p className="text-[11px] font-semibold text-navy-400">Pendentes</p>
+              </div>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Charts */}

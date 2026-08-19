@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -83,6 +84,16 @@ if (fs.existsSync(frontendPath)) {
   });
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`SafetyVision AI rodando em http://localhost:${PORT}`);
+});
+
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`A porta ${PORT} já está em uso.`);
+    console.error(`Encerre o processo que usa a porta ${PORT} ou defina outra porta via PORT no arquivo .env.`);
+    console.error(`Exemplo: PORT=5174`);
+    process.exit(1);
+  }
+  throw err;
 });
