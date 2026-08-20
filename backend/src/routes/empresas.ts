@@ -18,7 +18,7 @@ const empresaSchema = z.object({
   naturezaJuridica: z.string().nullable().optional(),
   porte: z.string().nullable().optional(),
   dataAbertura: z.string().nullable().optional(),
-  capitalSocial: z.string().nullable().optional(),
+  capitalSocial: z.preprocess((v) => (v == null ? null : String(v)), z.string().nullable().optional()),
   situacao: z.string().nullable().optional(),
   atividadePrincipal: z.string().nullable().optional(),
   atividadeSecundaria: z.string().nullable().optional(),

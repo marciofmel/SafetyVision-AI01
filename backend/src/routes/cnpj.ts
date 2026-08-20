@@ -167,7 +167,7 @@ router.get('/:cnpj', async (req, res) => {
       naturezaJuridica,
       porte: ai.porte || d.porte || '',
       dataAbertura: ai.dataAbertura || d.data_inicio || d.data_abertura || d.abertura || '',
-      capitalSocial: ai.capitalSocial || d.capital_social || '',
+      capitalSocial: ai.capitalSocial != null ? String(ai.capitalSocial) : (d.capital_social != null ? String(d.capital_social) : ''),
       socios,
       simplesNacional,
       empresaMEI,
