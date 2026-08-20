@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../../api';
 
 interface Incidente {
-  id: string; data: string; descricao: string; tipo: string; gravidade: string;
+  id: string; dataIncidente: string; descricao: string; tipo: string; gravidade: string;
   local?: string; danos?: string; causas?: string; acoesCorretivas?: string;
   registroCAT?: boolean; numeroCAT?: string; dataNotificacao?: string;
   empresa?: { nome: string }; setor?: { nome: string }; colaborador?: { nome: string };
@@ -77,7 +77,7 @@ export default function IncidentesTecnico() {
 
   const handleEdit = async (inc: Incidente) => {
     setForm({
-      data: inc.data ? inc.data.slice(0, 10) : '', descricao: inc.descricao,
+      data: inc.dataIncidente ? inc.dataIncidente.slice(0, 10) : '', descricao: inc.descricao,
       tipo: inc.tipo, gravidade: inc.gravidade,
       empresaId: empresas.find(e => e.nome === inc.empresa?.nome)?.id || '',
       setorId: '', colaboradorId: '',
@@ -262,7 +262,7 @@ export default function IncidentesTecnico() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger-500 text-white"><FiAlertTriangle size={18} /></div>
                   <div>
                     <h3 className="font-bold text-white">{inc.descricao.slice(0, 60)}{inc.descricao.length > 60 ? '...' : ''}</h3>
-                    <p className="text-xs text-amber-300">{inc.empresa?.nome} · {new Date(inc.data).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-xs text-amber-300">{inc.empresa?.nome} · {new Date(inc.dataIncidente).toLocaleDateString('pt-BR')}</p>
                   </div>
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${gravidadeColors[inc.gravidade] || 'bg-navy-100 text-navy-500'}`}>
