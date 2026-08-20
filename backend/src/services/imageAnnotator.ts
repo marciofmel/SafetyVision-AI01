@@ -83,7 +83,7 @@ export async function anotarImagem(
   epis: EpiParaAnotar[],
   outputDir: string
 ): Promise<string> {
-  const filename = path.basename(imagemPath);
+  const filename = path.basename(imagemPath, path.extname(imagemPath));
   const outputPath = path.join(outputDir, `anotada_${filename}.png`);
 
   const metadata = await sharp(imagemPath).metadata();

@@ -102,7 +102,7 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
         if (riscosParaAnotar.length > 0 || episParaAnotar.length > 0) {
           try {
             const anotada = await anotarImagem(mediaPath, riscosParaAnotar, episParaAnotar, anotadasDir);
-            imagensAnotadas.push(anotada);
+            imagensAnotadas.push('/uploads/anotadas/' + path.basename(anotada));
           } catch (annotErr: any) {
             console.error(`Erro ao anotar imagem ${midia.nome}:`, annotErr.message);
           }
