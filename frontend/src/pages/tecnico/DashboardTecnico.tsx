@@ -88,6 +88,7 @@ export default function DashboardTecnico() {
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
     if (selected.length === 0) return;
+    setShowPopup(true);
     setCapturedFiles(selected);
     selected.forEach((file) => {
       const reader = new FileReader();
