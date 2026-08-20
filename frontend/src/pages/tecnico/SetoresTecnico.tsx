@@ -35,7 +35,7 @@ export default function SetoresTecnico() {
     try { await api.delete(`/setores/${id}`); toast.success('Setor removido!'); load(); } catch { toast.error('Erro ao remover'); }
   };
 
-  const FormRow = ({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) => (
+  const formRow = (
     <tr className="bg-amber-50">
       <td className="p-3"><input className="input-field w-full" placeholder="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></td>
       <td className="p-3"><input className="input-field w-full" placeholder="Descrição" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></td>
@@ -47,12 +47,14 @@ export default function SetoresTecnico() {
       </td>
       <td className="p-3">
         <div className="flex gap-2">
-          <button onClick={onSave} className="rounded-lg bg-success-600 p-2 text-white hover:bg-success-700"><FiSave size={14} /></button>
-          <button onClick={onCancel} className="rounded-lg bg-navy-200 p-2 text-navy-600 hover:bg-navy-300"><FiX size={14} /></button>
+          <button onClick={() => handleSave(editingId ?? undefined)} className="rounded-lg bg-success-600 p-2 text-white hover:bg-success-700"><FiSave size={14} /></button>
+          <button onClick={() => { setShowNew(false); setEditingId(null); }} className="rounded-lg bg-navy-200 p-2 text-navy-600 hover:bg-navy-300"><FiX size={14} /></button>
         </div>
       </td>
     </tr>
   );
+
+  const showFormRow = showNew;
 
   return (
     <div>
@@ -77,10 +79,20 @@ export default function SetoresTecnico() {
             </tr>
           </thead>
           <tbody>
-            {showNew && <FormRow onSave={() => handleSave()} onCancel={() => setShowNew(false)} />}
+            {showFormRow && formRow}
             {setores.map((s) => (
               editingId === s.id ? (
-                <FormRow key={s.id} onSave={() => handleSave(s.id)} onCancel={() => setEditingId(null)} />
+                <tr key={s.id} className="bg-amber-50">
+                  <td className="p-3"><input className="input-field w-full" defaultValue={s.nome} key={`n-${s.id}`} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></td>
+                  <td className="p-3"><input className="input-field w-full" placeholder="Descrição" defaultValue={s.descricao || ''} key={`d-${s.id}`} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></td>
+                  <td className="p-3">{s.empresa?.nome || '—'}</td>
+                  <td className="p-3">
+                    <div className="flex gap-2">
+                      <button onClick={() => handleSave(s.id)} className="rounded-lg bg-success-600 p-2 text-white hover:bg-success-700"><FiSave size={14} /></button>
+                      <button onClick={() => setEditingId(null)} className="rounded-lg bg-navy-200 p-2 text-navy-600 hover:bg-navy-300"><FiX size={14} /></button>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 <tr key={s.id} className="border-b border-navy-50 transition-colors hover:bg-navy-50/50">
                   <td className="px-4 py-3 text-sm font-semibold text-navy-900">{s.nome}</td>
