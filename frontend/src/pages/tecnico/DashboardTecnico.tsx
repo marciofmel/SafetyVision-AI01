@@ -19,6 +19,7 @@ export default function DashboardTecnico() {
   const [empresaId, setEmpresaId] = useState('');
   const [setorId, setSetorId] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [geolocation, setGeolocation] = useState<{ lat: number; lng: number } | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
@@ -101,9 +102,10 @@ export default function DashboardTecnico() {
     setCapturedPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmitQuick = async () => {
+  const handleSubmitQuick = async (filesOverride?: File[], previewsOverride?: string[]) => {
+    const filesToSend = filesOverride || capturedFiles;
     if (!empresaId || !setorId) return toast.error('Selecione empresa e setor');
-    if (capturedFiles.length === 0) return toast.error('Adicione pelo menos um arquivo');
+    if (filesToSend.length === 0) return toast.error('Adicione pelo menos um arquivo');
     setUploading(true);
     try {
       const payload: any = { empresaId, setorId };
@@ -113,7 +115,7 @@ export default function DashboardTecnico() {
       }
       const { data: inspecao } = await api.post('/inspecoes', payload);
       const formData = new FormData();
-      capturedFiles.forEach((f) => formData.append('files', f));
+      filesToSend.forEach((f) => formData.append('files', f));
       await api.post(`/inspecoes/${inspecao.id}/midias`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -121,6 +123,7 @@ export default function DashboardTecnico() {
       setShowPopup(false);
       setCapturedFiles([]);
       setCapturedPreviews([]);
+      setPreviewIndex(null);
       setEmpresaId('');
       setSetorId('');
       setGeolocation(null);
@@ -132,10 +135,18 @@ export default function DashboardTecnico() {
     }
   };
 
+  const analyzeSingle = (index: number) => {
+    if (capturedFiles[index] && capturedPreviews[index]) {
+      setPreviewIndex(null);
+      handleSubmitQuick([capturedFiles[index]], [capturedPreviews[index]]);
+    }
+  };
+
   const closePopup = () => {
     setShowPopup(false);
     setCapturedFiles([]);
     setCapturedPreviews([]);
+    setPreviewIndex(null);
     setEmpresaId('');
     setSetorId('');
     setGeolocation(null);
@@ -237,13 +248,13 @@ export default function DashboardTecnico() {
                     <p className="mb-2 text-sm font-bold text-navy-900">{capturedFiles.length} arquivo(s) selecionado(s)</p>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {capturedPreviews.map((p, i) => (
-                        <div key={i} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+                        <div key={i} className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl ${p.startsWith('data:image') ? 'cursor-pointer' : ''}`} onClick={() => p.startsWith('data:image') && setPreviewIndex(i)}>
                           {p.startsWith('data:video') ? (
                             <video src={p} className="h-full w-full object-cover" />
                           ) : (
                             <img src={p} alt="" className="h-full w-full object-cover" />
                           )}
-                          <button onClick={() => removeFile(i)} className="absolute right-0.5 top-0.5 rounded-full bg-danger-600 p-0.5 text-white">
+                          <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} className="absolute right-0.5 top-0.5 rounded-full bg-danger-600 p-0.5 text-white">
                             <FiX size={10} />
                           </button>
                         </div>
@@ -277,12 +288,30 @@ export default function DashboardTecnico() {
                     </div>
                   )}
 
-                  <button onClick={handleSubmitQuick} disabled={!empresaId || !setorId || uploading} className="btn-primary w-full py-3 text-base disabled:opacity-50">
+                  <button onClick={() => handleSubmitQuick()} disabled={!empresaId || !setorId || uploading} className="btn-primary w-full py-3 text-base disabled:opacity-50">
                     {uploading ? <FiLoader className="animate-spin" size={18} /> : <FiCamera size={18} />}
                     {uploading ? 'Enviando...' : 'Enviar e Analisar'}
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview da foto selecionada com botao Analisar com IA */}
+      {previewIndex !== null && capturedPreviews[previewIndex] && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setPreviewIndex(null)}>
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img src={capturedPreviews[previewIndex]} alt="Prévia da inspeção" className="max-h-[55vh] w-full bg-navy-900 object-contain" />
+            <div className="flex flex-col gap-3 p-4 sm:flex-row">
+              <button onClick={() => analyzeSingle(previewIndex)} disabled={uploading} className="btn-primary flex-1 bg-success-600 text-base">
+                {uploading ? <FiLoader className="animate-spin" size={18} /> : <FiCamera size={18} />}
+                {uploading ? 'Enviando...' : 'Analisar com IA'}
+              </button>
+              <button onClick={() => setPreviewIndex(null)} className="rounded-xl border-2 border-navy-200 px-6 py-3 text-sm font-semibold text-navy-700 hover:bg-navy-50">
+                Fechar
+              </button>
             </div>
           </div>
         </div>
