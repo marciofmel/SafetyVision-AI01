@@ -1,5 +1,5 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 // Modelos alternativos usados automaticamente quando o principal fica indisponível (503/429/404)
 const FALLBACK_MODELS = (process.env.GEMINI_FALLBACK_MODELS || 'gemini-3-flash-preview,gemini-flash-lite-latest,gemini-pro-latest')
   .split(',')
@@ -35,7 +35,7 @@ async function chamarModelo(modelo: string, prompt: string, partsExtra?: any[]):
     contents: [{ parts }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
       responseMimeType: 'application/json',
     },
   };
@@ -120,9 +120,31 @@ export async function geminiMidia(prompt: string, mimeType: string, base64: stri
 }
 
 export function extrairJson(texto: string): any {
-  const jsonMatch = texto.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('Nenhum JSON encontrado na resposta da IA');
-  return JSON.parse(jsonMatch[0]);
+  if (!texto) throw new Error('Resposta da IA vazia');
+
+  // Remove blocos de código markdown (```json ... ```) se houver
+  const t = texto.replace(/```(?:json)?\s*([\s\S]*?)```/gi, '$1').trim();
+
+  // Extrai o maior bloco { ... } presente na resposta
+  const m = t.match(/\{[\s\S]*\}/);
+  const alvo = m ? m[0] : t;
+
+  try {
+    return JSON.parse(alvo);
+  } catch {
+    // tentativa de reparo: vírgulas pendentes, truncação de colchetes/chaves
+    const semTrailing = alvo.replace(/,\s*([}\]])/g, '$1').trim();
+    const base = semTrailing.endsWith('}') || semTrailing.endsWith(']') ? semTrailing.slice(0, -1) : semTrailing;
+    for (let dif = 0; dif <= 40; dif++) {
+      const fechamento = ']'.repeat(dif) + '}'.repeat(dif);
+      try {
+        return JSON.parse(base + fechamento);
+      } catch {
+        // continua tentando mais fechamentos
+      }
+    }
+    throw new Error('Resposta da IA em formato inválido. Tente novamente.');
+  }
 }
 
 export function extrairJsonArray(texto: string): any {

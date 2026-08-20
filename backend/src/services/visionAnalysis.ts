@@ -119,13 +119,19 @@ IMPORTANTE:
 - Se não encontrar problema, retorne arrays vazios
 - NÃO invente problemas que não estão visíveis na imagem`;
 
-  const text = await geminiMidia(prompt, mimeType, imagemBase64);
+  let text = await geminiMidia(prompt, mimeType, imagemBase64);
 
   let parsed: AnaliseResultado;
   try {
     parsed = normalizeKeys(extrairJson(text));
   } catch {
-    throw new Error('Resposta da IA em formato inválido. Tente novamente.');
+    // Se a primeira resposta vier mal formatada, tenta uma vez mais
+    text = await geminiMidia(prompt, mimeType, imagemBase64);
+    try {
+      parsed = normalizeKeys(extrairJson(text));
+    } catch {
+      throw new Error('Resposta da IA em formato inválido. Tente novamente.');
+    }
   }
 
   if (!parsed.riscos || !Array.isArray(parsed.riscos)) {
