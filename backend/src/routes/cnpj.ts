@@ -5,6 +5,13 @@ import { geminiConfigurada, geminiTexto, extrairJson } from '../services/gemini'
 
 const router = Router();
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const t = setTimeout(() => resolve(null), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }).catch(() => resolve(null));
+  });
+}
+
 function fetchJson(url: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith('https') ? https : http;
@@ -116,7 +123,7 @@ router.get('/:cnpj', async (req, res) => {
 
     let aiData: any = null;
     if (brasilData) {
-      aiData = await searchWithAI(cnpj, brasilData);
+      aiData = await withTimeout(searchWithAI(cnpj, brasilData), 8000);
     }
 
     const d = brasilData || {};

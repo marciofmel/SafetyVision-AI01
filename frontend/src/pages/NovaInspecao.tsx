@@ -42,7 +42,7 @@ export default function NovaInspecao() {
     setCnpjLoading(true);
     toast.loading('Buscando informações da empresa na internet...', { id: 'cnpj-lookup' });
     try {
-      const { data } = await api.get(`/cnpj/${clean}`, { timeout: 30000 });
+      const { data } = await api.get(`/cnpj/${clean}`, { timeout: 40000 });
       setCnpjData(data);
       toast.dismiss('cnpj-lookup');
       toast.success('Empresa encontrada! Todos os campos foram preenchidos.', { duration: 4000 });
