@@ -15,7 +15,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
 function fetchJson(url: string): Promise<any> {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith('https') ? https : http;
-    mod.get(url, { headers: { 'User-Agent': 'SafetyVision-AI/1.0' }, timeout: 10000 }, (res) => {
+    mod.get(url, { headers: { 'User-Agent': 'SafetyVision-AI/1.0' }, timeout: 5000 }, (res) => {
       if (res.statusCode !== 200) {
         res.resume();
         return reject(new Error(`HTTP ${res.statusCode}`));
@@ -32,7 +32,7 @@ function fetchJson(url: string): Promise<any> {
 function fetchText(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith('https') ? https : http;
-    mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 SafetyVision-AI/1.0' }, timeout: 10000 }, (res) => {
+    mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 SafetyVision-AI/1.0' }, timeout: 5000 }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         return fetchText(res.headers.location).then(resolve).catch(reject);
       }
@@ -180,3 +180,4 @@ router.get('/:cnpj', async (req, res) => {
 });
 
 export default router;
+
