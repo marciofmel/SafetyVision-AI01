@@ -58,7 +58,7 @@ export default function EmpresasTecnico() {
     setCnpjFound(false);
     toast.loading('Buscando informações da empresa na internet...', { id: 'cnpj-lookup' });
     try {
-      const { data } = await api.get(`/cnpj/${clean}`, { timeout: 40000 });
+      const { data } = await api.get(`/cnpj/${clean}`, { timeout: 45000 });
       const sociosArr = Array.isArray(data.socios) ? data.socios : (data.socios ? String(data.socios).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
       setForm({
         nome: data.nomeFantasia || data.nome || '',

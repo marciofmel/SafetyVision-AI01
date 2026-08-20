@@ -123,7 +123,7 @@ router.get('/:cnpj', async (req, res) => {
 
     let aiData: any = null;
     if (brasilData) {
-      aiData = await withTimeout(searchWithAI(cnpj, brasilData), 8000);
+      aiData = await withTimeout(searchWithAI(cnpj, brasilData), 25000);
     }
 
     const d = brasilData || {};
@@ -166,7 +166,7 @@ router.get('/:cnpj', async (req, res) => {
       atividadeSecundaria,
       naturezaJuridica,
       porte: ai.porte || d.porte || '',
-      dataAbertura: ai.dataAbertura || d.data_abertura || d.abertura || '',
+      dataAbertura: ai.dataAbertura || d.data_inicio || d.data_abertura || d.abertura || '',
       capitalSocial: ai.capitalSocial || d.capital_social || '',
       socios,
       simplesNacional,
