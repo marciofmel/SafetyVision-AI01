@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase, FiCheckSquare, FiDollarSign, FiBook, FiAlertCircle, FiCalendar, FiFileText, FiBarChart2, FiHeart, FiUsers } from 'react-icons/fi';
+import { FiHome, FiPlus, FiClock, FiLogOut, FiShield, FiMenu, FiX, FiAlertTriangle, FiSettings, FiUser, FiChevronDown, FiBriefcase, FiCheckSquare, FiDollarSign, FiBook, FiAlertCircle, FiCalendar, FiFileText, FiBarChart2, FiHeart, FiUsers, FiGrid } from 'react-icons/fi';
 import NotificationBell from './NotificationBell';
 
 export default function TecnicoLayout() {
@@ -24,6 +24,7 @@ export default function TecnicoLayout() {
     { to: '/tecnico/nova-inspecao', icon: <FiPlus size={20} />, label: 'Nova Inspeção' },
     { to: '/tecnico/empresas', icon: <FiBriefcase size={20} />, label: 'Empresas' },
     { to: '/tecnico/colaboradores', icon: <FiUser size={20} />, label: 'Colaboradores' },
+    { to: '/tecnico/setores', icon: <FiGrid size={20} />, label: 'Seções' },
     { to: '/tecnico/historico', icon: <FiClock size={20} />, label: 'Histórico' },
   ];
 

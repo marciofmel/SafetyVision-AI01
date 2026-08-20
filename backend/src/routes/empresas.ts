@@ -10,7 +10,7 @@ const empresaSchema = z.object({
   cnpj: z.string().nullable().optional(),
   endereco: z.string().nullable().optional(),
   telefone: z.string().nullable().optional(),
-  email: z.string().email('Email inválido').nullable().optional(),
+  email: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? null : v), z.string().email('Email inválido').nullable().optional()),
   bairro: z.string().nullable().optional(),
   cidade: z.string().nullable().optional(),
   estado: z.string().nullable().optional(),
@@ -25,7 +25,7 @@ const empresaSchema = z.object({
   simplesNacional: z.boolean().nullable().optional(),
   empresaMEI: z.boolean().nullable().optional(),
   socios: z.string().nullable().optional(),
-  site: z.string().url('URL inválida').nullable().optional(),
+  site: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? null : v), z.string().url('URL inválida').nullable().optional()),
   observacoes: z.string().nullable().optional(),
 });
 

@@ -16,7 +16,7 @@ const colaboradorSchema = z.object({
   setorId: z.string().nullable().optional(),
   empresaId: z.string().min(1, 'Empresa é obrigatória'),
   telefone: z.string().nullable().optional(),
-  email: z.string().email('Email inválido').nullable().optional(),
+  email: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? null : v), z.string().email('Email inválido').nullable().optional()),
   dataNascimento: z.string().nullable().optional(),
   admissao: z.string().nullable().optional(),
   matricula: z.string().nullable().optional(),
