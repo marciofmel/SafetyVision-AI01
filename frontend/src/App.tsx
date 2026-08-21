@@ -14,6 +14,7 @@ import LoginTecnico from './pages/tecnico/LoginTecnico';
 import CadastroTecnico from './pages/tecnico/CadastroTecnico';
 import DashboardTecnico from './pages/tecnico/DashboardTecnico';
 import EmpresasTecnico from './pages/tecnico/EmpresasTecnico';
+import EmpresaDetalhe from './pages/tecnico/EmpresaDetalhe';
 import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
 import SetoresTecnico from './pages/tecnico/SetoresTecnico';
 import NRTecnico from './pages/tecnico/NRTecnico';
@@ -86,6 +87,7 @@ export default function App() {
         <Route index element={<DashboardTecnico />} />
         <Route path="nova-inspecao" element={<NovaInspecao />} />
         <Route path="empresas" element={<EmpresasTecnico />} />
+        <Route path="empresas/:id" element={<EmpresaDetalhe />} />
         <Route path="colaboradores" element={<ColaboradoresTecnico />} />
         <Route path="setores" element={<SetoresTecnico />} />
         <Route path="analise/:id" element={<AnaliseIA />} />

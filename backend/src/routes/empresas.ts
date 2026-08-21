@@ -45,7 +45,25 @@ router.get('/', async (req: AuthRequest, res) => {
 router.get('/:id', async (req: AuthRequest, res) => {
   try {
     const id = String(req.params.id);
-    const empresa = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
+    const empresa = await prisma.empresa.findFirst({
+      where: { id, userId: req.userId! },
+      include: {
+        _count: {
+          select: {
+            setores: true,
+            colaboradores: true,
+            inspecoes: true,
+            cronogramas: true,
+            pgrs: true,
+            laudos: true,
+            asos: true,
+            epis: true,
+            treinamentos: true,
+            incidentes: true,
+          },
+        },
+      },
+    });
     if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
     res.json(empresa);
   } catch (err: any) {
@@ -96,6 +114,57 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     if (!existing) return res.status(404).json({ error: 'Empresa não encontrada' });
     await prisma.empresa.update({ where: { id }, data: { ativo: false } });
     res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id/inspecoes', async (req: AuthRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const empresa = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
+    if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
+
+    const inspecoes = await prisma.inspecao.findMany({
+      where: { empresaId: id, usuarioId: req.userId! },
+      include: { setor: true, _count: { select: { midias: true, riscos: true, epiViolacoes: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    res.json(inspecoes);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id/setores', async (req: AuthRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const empresa = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
+    if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
+
+    const setores = await prisma.setor.findMany({
+      where: { empresaId: id, userId: req.userId! },
+      include: { _count: { select: { inspecoes: true } } },
+      orderBy: { nome: 'asc' },
+    });
+    res.json(setores);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/:id/colaboradores', async (req: AuthRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const empresa = await prisma.empresa.findFirst({ where: { id, userId: req.userId! } });
+    if (!empresa) return res.status(404).json({ error: 'Empresa não encontrada' });
+
+    const colaboradores = await prisma.colaborador.findMany({
+      where: { empresaId: id, userId: req.userId! },
+      orderBy: { nome: 'asc' },
+    });
+    res.json(colaboradores);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
