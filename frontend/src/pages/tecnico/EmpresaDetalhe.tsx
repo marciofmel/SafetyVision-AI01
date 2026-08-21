@@ -236,7 +236,7 @@ export default function EmpresaDetalhe() {
           {inspecoes.length === 0 ? (
             <div className="card p-12 text-center"><p className="text-sm text-navy-500">Nenhuma inspeção realizada</p></div>
           ) : inspecoes.map(ins => (
-            <Link key={ins.id} to={`/tecnico/analise/${ins.id}`} className="card block p-4 transition-all hover:shadow-md">
+            <Link key={ins.id} to={`/tecnico/relatorio/${ins.id}`} className="card block p-4 transition-all hover:shadow-md">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-navy-500">{ins.setor?.nome || 'Setor'} · {new Date(ins.createdAt).toLocaleDateString('pt-BR')}</p>
