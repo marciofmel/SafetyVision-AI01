@@ -4,6 +4,7 @@ import fs from 'fs';
 import prisma from '../prisma';
 import { analisarImagem } from '../services/visionAnalysis';
 import { anotarImagem } from '../services/imageAnnotator';
+import { extractFrames, cleanupFrames } from '../services/videoFrameExtractor';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -22,9 +23,9 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
     if (inspecao.midias.length === 0) return res.status(400).json({ error: 'Adicione fotos ou vídeos antes de analisar' });
 
-    const fotos = inspecao.midias.filter(m => m.tipo === 'foto');
-    if (fotos.length === 0) {
-      return res.status(400).json({ error: 'Nenhuma foto encontrada. Envie fotos para análise.' });
+    const midias = inspecao.midias;
+    if (midias.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma mídia encontrada. Envie fotos ou vídeos para análise.' });
     }
 
     const todosRiscos: any[] = [];
@@ -33,7 +34,7 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
     let descricaoGeral = '';
     let erros: string[] = [];
 
-    for (const midia of fotos) {
+    for (const midia of midias) {
       const mediaPath = path.join(uploadsDir, midia.url.replace('/uploads/', ''));
 
       if (!fs.existsSync(mediaPath)) {
@@ -41,81 +42,102 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
         continue;
       }
 
+      let caminhosParaAnalisar: string[] = [];
+      let framesTemporarios: string[] = [];
+
+      if (midia.tipo === 'video') {
+        try {
+          framesTemporarios = await extractFrames(mediaPath, 3);
+          caminhosParaAnalisar = framesTemporarios;
+        } catch (videoErr: any) {
+          console.error(`Erro ao extrair frames do vídeo ${midia.nome}:`, videoErr.message);
+          erros.push(`Erro ao processar vídeo ${midia.nome}: ${videoErr.message}`);
+          continue;
+        }
+      } else {
+        caminhosParaAnalisar = [mediaPath];
+      }
+
       try {
-        const resultado = await analisarImagem(mediaPath, midia.nome);
+        for (const framePath of caminhosParaAnalisar) {
+          const resultado = await analisarImagem(framePath, midia.nome);
 
-        if (resultado.descricaoGeral) {
-          descricaoGeral += resultado.descricaoGeral + ' ';
-        }
+          if (resultado.descricaoGeral) {
+            descricaoGeral += resultado.descricaoGeral + ' ';
+          }
 
-        const riscosComRegiao = resultado.riscos || [];
-        const episComRegiao = resultado.epiViolacoes || [];
+          const riscosComRegiao = resultado.riscos || [];
+          const episComRegiao = resultado.epiViolacoes || [];
 
-        for (const risco of riscosComRegiao) {
-          const created = await prisma.risco.create({
-            data: {
-              categoria: risco.categoria,
-              descricao: risco.descricao,
-              localIdentificado: risco.localIdentificado,
-              imagemUrl: midia.url,
-              confianca: risco.confianca,
-              gravidade: risco.gravidade,
-              consequencias: risco.consequencias,
-              nrsRelacionadas: risco.nrsRelacionadas,
-              medidasPreventivas: risco.medidasPreventivas,
-              medidasCorretivas: risco.medidasCorretivas,
-              prioridade: risco.gravidade === 'critica' ? 'critica' : risco.gravidade === 'alta' ? 'alta' : 'media',
-              inspecaoId: inspecao.id,
-            },
-          });
-          todosRiscos.push({ ...created, regiao: risco.regiao });
-        }
+          for (const risco of riscosComRegiao) {
+            const created = await prisma.risco.create({
+              data: {
+                categoria: risco.categoria,
+                descricao: risco.descricao,
+                localIdentificado: risco.localIdentificado,
+                imagemUrl: midia.url,
+                confianca: risco.confianca,
+                gravidade: risco.gravidade,
+                consequencias: risco.consequencias,
+                nrsRelacionadas: risco.nrsRelacionadas,
+                medidasPreventivas: risco.medidasPreventivas,
+                medidasCorretivas: risco.medidasCorretivas,
+                prioridade: risco.gravidade === 'critica' ? 'critica' : risco.gravidade === 'alta' ? 'alta' : 'media',
+                inspecaoId: inspecao.id,
+              },
+            });
+            todosRiscos.push({ ...created, regiao: risco.regiao });
+          }
 
-        for (const epi of episComRegiao) {
-          const created = await prisma.epiViolacao.create({
-            data: {
-              epiNome: epi.epiNome,
-              status: epi.status,
-              confianca: epi.confianca,
-              descricao: epi.descricao,
-              imagemUrl: midia.url,
-              inspecaoId: inspecao.id,
-            },
-          });
-          todosEpi.push({ ...created, regiao: epi.regiao });
-        }
+          for (const epi of episComRegiao) {
+            const created = await prisma.epiViolacao.create({
+              data: {
+                epiNome: epi.epiNome,
+                status: epi.status,
+                confianca: epi.confianca,
+                descricao: epi.descricao,
+                imagemUrl: midia.url,
+                inspecaoId: inspecao.id,
+              },
+            });
+            todosEpi.push({ ...created, regiao: epi.regiao });
+          }
 
-        // Generate annotated image
-        const riscosParaAnotar = riscosComRegiao.filter((r: any) => r.regiao).map((r: any) => ({
-          descricao: r.descricao,
-          gravidade: r.gravidade,
-          regiao: r.regiao,
-          categoria: r.categoria,
-        }));
+          if (midia.tipo === 'foto') {
+            const riscosParaAnotar = riscosComRegiao.filter((r: any) => r.regiao).map((r: any) => ({
+              descricao: r.descricao,
+              gravidade: r.gravidade,
+              regiao: r.regiao,
+              categoria: r.categoria,
+            }));
 
-        const episParaAnotar = episComRegiao.filter((e: any) => e.regiao).map((e: any) => ({
-          epiNome: e.epiNome,
-          status: e.status,
-          regiao: e.regiao,
-        }));
+            const episParaAnotar = episComRegiao.filter((e: any) => e.regiao).map((e: any) => ({
+              epiNome: e.epiNome,
+              status: e.status,
+              regiao: e.regiao,
+            }));
 
-        if (riscosParaAnotar.length > 0 || episParaAnotar.length > 0) {
-          try {
-            const anotada = await anotarImagem(mediaPath, riscosParaAnotar, episParaAnotar, anotadasDir);
-            imagensAnotadas.push('/uploads/anotadas/' + path.basename(anotada));
-          } catch (annotErr: any) {
-            console.error(`Erro ao anotar imagem ${midia.nome}:`, annotErr.message);
+            if (riscosParaAnotar.length > 0 || episParaAnotar.length > 0) {
+              try {
+                const anotada = await anotarImagem(mediaPath, riscosParaAnotar, episParaAnotar, anotadasDir);
+                imagensAnotadas.push('/uploads/anotadas/' + path.basename(anotada));
+              } catch (annotErr: any) {
+                console.error(`Erro ao anotar imagem ${midia.nome}:`, annotErr.message);
+              }
+            }
           }
         }
       } catch (err: any) {
         console.error(`Erro ao analisar midia ${midia.id}:`, err.message);
         erros.push(`Erro ao analisar ${midia.nome}: ${err.message}`);
+      } finally {
+        cleanupFrames(framesTemporarios);
       }
     }
 
-    if (fotos.length > 0 && erros.length === fotos.length) {
+    if (midias.length > 0 && erros.length === midias.length) {
       return res.status(502).json({
-        error: 'Não foi possível analisar as fotos. Verifique a configuração da IA no servidor.',
+        error: 'Não foi possível analisar as mídias. Verifique a configuração da IA no servidor.',
         detalhes: erros,
       });
     }
@@ -131,7 +153,7 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
 
     res.json({
       inspecaoId: inspecao.id,
-      totalMidias: fotos.length,
+      totalMidias: midias.length,
       riscosEncontrados: totalRiscos,
       epiViolacoes: todosEpi.filter(e => e.status === 'ausente').length,
       notaConformidade: nota,

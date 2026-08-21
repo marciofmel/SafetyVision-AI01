@@ -249,7 +249,7 @@ export default function DashboardTecnico() {
                     <p className="mb-2 text-sm font-bold text-navy-900">{capturedFiles.length} arquivo(s) selecionado(s)</p>
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {capturedPreviews.map((p, i) => (
-                        <div key={i} className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl ${p.startsWith('data:image') ? 'cursor-pointer' : ''}`} onClick={() => p.startsWith('data:image') && setPreviewIndex(i)}>
+                        <div key={i} className="relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-xl" onClick={() => setPreviewIndex(i)}>
                           {p.startsWith('data:video') ? (
                             <video src={p} className="h-full w-full object-cover" />
                           ) : (
@@ -300,11 +300,15 @@ export default function DashboardTecnico() {
         </div>
       )}
 
-      {/* Preview da foto selecionada com botao Analisar com IA */}
+      {/* Preview da foto/video selecionada com botao Analisar com IA */}
       {previewIndex !== null && capturedPreviews[previewIndex] && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setPreviewIndex(null)}>
           <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <img src={capturedPreviews[previewIndex]} alt="Prévia da inspeção" className="max-h-[55vh] w-full bg-navy-900 object-contain" />
+            {capturedPreviews[previewIndex].startsWith('data:video') ? (
+              <video src={capturedPreviews[previewIndex]} controls className="max-h-[55vh] w-full bg-navy-900 object-contain" />
+            ) : (
+              <img src={capturedPreviews[previewIndex]} alt="Prévia da inspeção" className="max-h-[55vh] w-full bg-navy-900 object-contain" />
+            )}
             <div className="flex flex-col gap-3 p-4 sm:flex-row">
               <button onClick={() => analyzeSingle(previewIndex)} disabled={uploading} className="btn-primary flex-1 bg-success-600 text-base">
                 {uploading ? <FiLoader className="animate-spin" size={18} /> : <FiCamera size={18} />}
