@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiBriefcase, FiUsers, FiClipboard, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiMapPin, FiPhone, FiMail, FiGlobe, FiFileText, FiShare2, FiDownload, FiEdit3, FiMessageSquare, FiMail as FiMailIcon } from 'react-icons/fi';
+import { FiArrowLeft, FiBriefcase, FiUsers, FiClipboard, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiMapPin, FiPhone, FiMail, FiGlobe, FiFileText, FiShare2, FiDownload, FiEdit3, FiMessageSquare, FiMail as FiMailIcon, FiHeart, FiBook } from 'react-icons/fi';
 import api from '../../api';
 
 interface Empresa {
@@ -33,6 +33,8 @@ export default function EmpresaDetalhe() {
   const [cronogramas, setCronogramas] = useState<Cronograma[]>([]);
   const [tab, setTab] = useState<Tab>('visaoGeral');
   const [loading, setLoading] = useState(true);
+  const [showShare, setShowShare] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -56,6 +58,13 @@ export default function EmpresaDetalhe() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
+  const handleTabChange = (newTab: Tab) => {
+    setTab(newTab);
+    if (contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -78,6 +87,10 @@ export default function EmpresaDetalhe() {
   const c = empresa._count || {};
   const inspecoesAnalizadas = inspecoes.filter(i => i.status === 'analisada').length;
   const totalRiscos = inspecoes.reduce((acc, i) => acc + (i._count?.riscos || 0), 0);
+  const totalEpiViolacoes = inspecoes.reduce((acc, i) => acc + (i._count?.epiViolacoes || 0), 0);
+
+  const shareUrl = `${window.location.origin}/tecnico/empresas/${empresa.id}`;
+  const shareText = `${empresa.nome} - SafetyVision AI`;
 
   const tabs: { key: Tab; label: string; icon: any; count?: number }[] = [
     { key: 'visaoGeral', label: 'Visão Geral', icon: <FiBriefcase size={16} /> },
@@ -93,9 +106,10 @@ export default function EmpresaDetalhe() {
         <FiArrowLeft size={16} /> Voltar para Empresas
       </Link>
 
+      {/* Banner */}
       <div className="mb-6 rounded-2xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 p-6 text-white shadow-xl sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-extrabold sm:text-3xl">{empresa.nome}</h1>
             {empresa.cnpj && <p className="mt-1 text-sm text-amber-200/80">CNPJ: {empresa.cnpj}</p>}
             {empresa.situacao && (
@@ -104,43 +118,66 @@ export default function EmpresaDetalhe() {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap gap-3 text-xs text-amber-200/70">
-            {empresa.endereco && <span className="flex items-center gap-1"><FiMapPin size={12} /> {empresa.endereco}{empresa.cidade ? `, ${empresa.cidade}/${empresa.estado}` : ''}</span>}
-            {empresa.telefone && <span className="flex items-center gap-1"><FiPhone size={12} /> {empresa.telefone}</span>}
-            {empresa.email && <span className="flex items-center gap-1"><FiMail size={12} /> {empresa.email}</span>}
-            {empresa.site && <span className="flex items-center gap-1"><FiGlobe size={12} /> {empresa.site}</span>}
+          <div className="flex shrink-0 gap-2">
+            <div className="relative">
+              <button onClick={() => setShowShare(!showShare)} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/20 transition-all">
+                <FiShare2 size={16} /> Compartilhar
+              </button>
+              {showShare && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-navy-100 bg-white py-2 shadow-xl">
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50">
+                    <FiMessageSquare size={16} className="text-green-600" /> WhatsApp
+                  </a>
+                  <a href={`mailto:?subject=${encodeURIComponent(shareText)}&body=${encodeURIComponent(shareUrl)}`} className="flex items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50">
+                    <FiMailIcon size={16} className="text-blue-600" /> E-mail
+                  </a>
+                  <button onClick={() => { navigator.clipboard.writeText(shareUrl); setShowShare(false); }} className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-navy-600 hover:bg-navy-50">
+                    <FiGlobe size={16} className="text-navy-400" /> Copiar link
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-amber-200/70">
+          {empresa.endereco && <span className="flex items-center gap-1"><FiMapPin size={12} /> {empresa.endereco}{empresa.cidade ? `, ${empresa.cidade}/${empresa.estado}` : ''}</span>}
+          {empresa.telefone && <span className="flex items-center gap-1"><FiPhone size={12} /> {empresa.telefone}</span>}
+          {empresa.email && <span className="flex items-center gap-1"><FiMail size={12} /> {empresa.email}</span>}
+          {empresa.site && <span className="flex items-center gap-1"><FiGlobe size={12} /> {empresa.site}</span>}
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="card p-4 text-center">
+      {/* Stats coloridos */}
+      <div ref={contentRef} className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="card border-l-4 border-l-navy-600 p-4 text-center">
           <p className="text-2xl font-extrabold text-navy-900">{c.setores || 0}</p>
           <p className="text-xs text-navy-500">Setores</p>
         </div>
-        <div className="card p-4 text-center">
-          <p className="text-2xl font-extrabold text-navy-900">{c.colaboradores || 0}</p>
+        <div className="card border-l-4 border-l-blue-500 p-4 text-center">
+          <p className="text-2xl font-extrabold text-blue-600">{c.colaboradores || 0}</p>
           <p className="text-xs text-navy-500">Colaboradores</p>
         </div>
-        <div className="card p-4 text-center">
-          <p className="text-2xl font-extrabold text-navy-900">{c.inspecoes || 0}</p>
+        <div className="card border-l-4 border-l-amber-500 p-4 text-center">
+          <p className="text-2xl font-extrabold text-amber-600">{c.inspecoes || 0}</p>
           <p className="text-xs text-navy-500">Inspeções</p>
         </div>
-        <div className="card p-4 text-center">
+        <div className="card border-l-4 border-l-danger-500 p-4 text-center">
           <p className="text-2xl font-extrabold text-danger-600">{totalRiscos}</p>
-          <p className="text-xs text-navy-500">Riscos Identificados</p>
+          <p className="text-xs text-navy-500">Riscos</p>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => handleTabChange(t.key)}
             className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${tab === t.key ? 'bg-amber-500 text-navy-900 shadow-lg shadow-amber-500/25' : 'bg-white text-navy-600 hover:bg-navy-50'}`}>
             {t.icon} {t.label} {t.count !== undefined && <span className="ml-1 rounded-full bg-navy-900/10 px-2 py-0.5 text-xs">{t.count}</span>}
           </button>
         ))}
       </div>
 
+      {/* Visão Geral */}
       {tab === 'visaoGeral' && (
         <div className="space-y-4">
           <div className="card p-4 sm:p-6">
@@ -181,8 +218,8 @@ export default function EmpresaDetalhe() {
           </div>
 
           <div className="card p-4 sm:p-6">
-            <h3 className="mb-3 text-sm font-bold text-navy-900">Resumo de conformidade</h3>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <h3 className="mb-3 text-sm font-bold text-navy-900">Resumo de Conformidade</h3>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <div className="text-center">
                 <p className="text-lg font-bold text-success-600">{inspecoesAnalizadas}</p>
                 <p className="text-xs text-navy-500">Analisadas</p>
@@ -192,8 +229,12 @@ export default function EmpresaDetalhe() {
                 <p className="text-xs text-navy-500">ASOs</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-amber-600">{c.treinamentos || 0}</p>
+                <p className="text-lg font-bold text-blue-600">{c.treinamentos || 0}</p>
                 <p className="text-xs text-navy-500">Treinamentos</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-danger-600">{totalEpiViolacoes}</p>
+                <p className="text-xs text-navy-500">Violações EPI</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-danger-600">{c.incidentes || 0}</p>
@@ -201,9 +242,40 @@ export default function EmpresaDetalhe() {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Link to={`/tecnico/asos?empresaId=${empresa.id}`} className="card flex items-center gap-4 p-4 transition-all hover:shadow-md">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-danger-100">
+                <FiHeart className="text-danger-600" size={20} />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-navy-900">{c.asos || 0}</p>
+                <p className="text-xs text-navy-500">ASOs cadastrados</p>
+              </div>
+            </Link>
+            <Link to={`/tecnico/treinamentos?empresaId=${empresa.id}`} className="card flex items-center gap-4 p-4 transition-all hover:shadow-md">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                <FiBook className="text-blue-600" size={20} />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-navy-900">{c.treinamentos || 0}</p>
+                <p className="text-xs text-navy-500">Treinamentos</p>
+              </div>
+            </Link>
+            <Link to={`/tecnico/incidentes?empresaId=${empresa.id}`} className="card flex items-center gap-4 p-4 transition-all hover:shadow-md">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                <FiAlertTriangle className="text-amber-600" size={20} />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-navy-900">{c.incidentes || 0}</p>
+                <p className="text-xs text-navy-500">Incidentes</p>
+              </div>
+            </Link>
+          </div>
         </div>
       )}
 
+      {/* Setores */}
       {tab === 'setores' && (
         <div className="space-y-3">
           {setores.length === 0 ? (
@@ -222,6 +294,7 @@ export default function EmpresaDetalhe() {
         </div>
       )}
 
+      {/* Colaboradores */}
       {tab === 'colaboradores' && (
         <div className="space-y-3">
           {colaboradores.length === 0 ? (
@@ -245,6 +318,7 @@ export default function EmpresaDetalhe() {
         </div>
       )}
 
+      {/* Inspeções */}
       {tab === 'inspecoes' && (
         <div className="space-y-3">
           {inspecoes.length === 0 ? (
@@ -276,6 +350,7 @@ export default function EmpresaDetalhe() {
         </div>
       )}
 
+      {/* Relatórios */}
       {tab === 'relatorios' && (
         <div className="space-y-6">
           <div>
@@ -284,7 +359,7 @@ export default function EmpresaDetalhe() {
               <div key={l.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{l.titulo}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className={`rounded-full px-2 py-0.5 ${l.aprovado ? 'bg-success-100 text-success-700' : 'bg-amber-100 text-amber-700'}`}>{l.aprovado ? 'Aprovado' : 'Pendente'}</span><span>{l.tipo}</span><span>{new Date(l.createdAt).toLocaleDateString('pt-BR')}</span></div></div>
                 <div className="flex gap-1">
-                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <Link to={`/tecnico/relatorio/${l.inspecaoId || ''}`} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Ver relatório"><FiEdit3 size={16} /></Link>
                   <a href={`https://wa.me/?text=${encodeURIComponent(`Laudo: ${l.titulo} - ${window.location.origin}/api/laudos/${l.id}/html`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
                   <a href={`mailto:?subject=${encodeURIComponent(l.titulo)}&body=${encodeURIComponent(`${window.location.origin}/api/laudos/${l.id}/html`)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
                   <a href={`/api/laudos/${l.id}/html`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></a>
@@ -298,7 +373,7 @@ export default function EmpresaDetalhe() {
               <div key={p.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{p.titulo}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className={`rounded-full px-2 py-0.5 ${p.aprovado ? 'bg-success-100 text-success-700' : 'bg-amber-100 text-amber-700'}`}>{p.aprovado ? 'Aprovado' : 'Em revisão'}</span><span>Rev {p.revisao}</span><span>{p.itens?.length || 0} itens</span><span>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</span></div></div>
                 <div className="flex gap-1">
-                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <Link to={`/tecnico/pgr?edit=${p.id}`} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></Link>
                   <a href={`https://wa.me/?text=${encodeURIComponent(`PGR: ${p.titulo}`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
                   <a href={`mailto:?subject=${encodeURIComponent(p.titulo)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
                   <button className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></button>
@@ -312,7 +387,7 @@ export default function EmpresaDetalhe() {
               <div key={c.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{c.nome}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className="rounded-full bg-navy-100 px-2 py-0.5 capitalize">{c.frequencia}</span>{c.proximaData && <span>Próxima: {new Date(c.proximaData).toLocaleDateString('pt-BR')}</span>}<span>{c.inspecoes?.length || 0} agendadas</span></div></div>
                 <div className="flex gap-1">
-                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <Link to={`/tecnico/cronograma?edit=${c.id}`} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></Link>
                   <a href={`https://wa.me/?text=${encodeURIComponent(`Cronograma: ${c.nome}`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
                   <a href={`mailto:?subject=${encodeURIComponent(c.nome)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
                   <button className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></button>
