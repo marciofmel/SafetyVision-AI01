@@ -247,7 +247,7 @@ export default function DashboardTecnico() {
                 <div className="space-y-4">
                   <div>
                     <p className="mb-2 text-sm font-bold text-navy-900">{capturedFiles.length} arquivo(s) selecionado(s)</p>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
+                    <div className="flex flex-wrap gap-2 pb-2">
                       {capturedPreviews.map((p, i) => (
                         <div key={i} className="relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-xl" onClick={() => setPreviewIndex(i)}>
                           {p.startsWith('data:video') ? (
