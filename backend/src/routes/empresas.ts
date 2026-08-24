@@ -34,7 +34,7 @@ router.get('/', async (req: AuthRequest, res) => {
     const empresas = await prisma.empresa.findMany({
       where: { userId: req.userId!, ativo: true },
       orderBy: { nome: 'asc' },
-      include: { _count: { select: { setores: true } } },
+      include: { _count: { select: { setores: true, colaboradores: true, inspecoes: true, laudos: true, pgrs: true, cronogramas: true, asos: true, epis: true, treinamentos: true, incidentes: true } } },
     });
     res.json(empresas);
   } catch (err: any) {
