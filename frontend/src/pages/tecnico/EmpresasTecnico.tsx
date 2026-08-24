@@ -436,45 +436,26 @@ export default function EmpresasTecnico() {
             </p>
           </div>
         ) : filteredEmpresas.map((e) => (
-          <Link key={e.id} to={`/tecnico/empresas/${e.id}`} className="card block p-4 transition-all hover:shadow-md">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="break-words font-bold text-navy-900">{e.nome}</p>
-                  {e.situacao && (
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${e.situacao.toLowerCase() === 'ativa' ? 'bg-success-100 text-success-700' : 'bg-navy-100 text-navy-500'}`}>
-                      {e.situacao}
-                    </span>
-                  )}
-                </div>
-                {e.cnpj && <p className="break-words text-xs text-navy-500">CNPJ: {e.cnpj}</p>}
-                {e.endereco && <p className="break-words text-xs text-navy-500">{e.endereco}{e.bairro ? `, ${e.bairro}` : ''}{e.cidade && e.estado ? ` - ${e.cidade}/${e.estado}` : ''}</p>}
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-navy-400">
-                  {e.telefone && <span className="break-all">Tel: {e.telefone}</span>}
-                  {e.email && <span className="break-all">Email: {e.email}</span>}
-                </div>
-                {e.atividadePrincipal && <p className="mt-1 break-words text-xs text-navy-400">Atividade: {e.atividadePrincipal}</p>}
-                {e._count && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {e._count.inspecoes !== undefined && (
-                      <span className="flex items-center gap-1 rounded-full bg-navy-100 px-2 py-0.5 text-[10px] font-semibold text-navy-600">
-                        <FiClock size={10} /> {e._count.inspecoes} inspeções
-                      </span>
-                    )}
-                    {e._count.setores !== undefined && (
-                      <span className="flex items-center gap-1 rounded-full bg-navy-100 px-2 py-0.5 text-[10px] font-semibold text-navy-600">
-                        {e._count.setores} setores
-                      </span>
-                    )}
-                    {e._count.colaboradores !== undefined && (
-                      <span className="flex items-center gap-1 rounded-full bg-navy-100 px-2 py-0.5 text-[10px] font-semibold text-navy-600">
-                        {e._count.colaboradores} colaboradores
-                      </span>
-                    )}
-                  </div>
+          <Link key={e.id} to={`/tecnico/empresas/${e.id}`} className="card flex items-center justify-between p-4 transition-all hover:shadow-md">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <FiBriefcase className="shrink-0 text-amber-500" size={18} />
+                <p className="break-words font-bold text-navy-900">{e.nome}</p>
+                {e.situacao && (
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${e.situacao.toLowerCase() === 'ativa' ? 'bg-success-100 text-success-700' : 'bg-navy-100 text-navy-500'}`}>
+                    {e.situacao}
+                  </span>
                 )}
               </div>
-              <div className="flex shrink-0 gap-1">
+              {e.cidade && e.estado && <p className="mt-1 text-xs text-navy-400">{e.cidade}/{e.estado}</p>}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {e._count?.inspecoes !== undefined && (
+                <span className="rounded-full bg-navy-100 px-2 py-0.5 text-[10px] font-semibold text-navy-600">
+                  {e._count.inspecoes} inspeções
+                </span>
+              )}
+              <div className="flex gap-1">
                 <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); handleEdit(e); }} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100"><FiEdit2 size={14} /></button>
                 <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setDeleteTarget(e); }} className="rounded-lg p-2 text-navy-400 hover:bg-danger-100 hover:text-danger-600"><FiTrash2 size={14} /></button>
               </div>
@@ -482,6 +463,31 @@ export default function EmpresasTecnico() {
           </Link>
         ))}
       </div>
+
+      {/* Resumo geral */}
+      {empresas.length > 0 && (
+        <div className="mt-6 card p-4 sm:p-6">
+          <h3 className="mb-3 text-sm font-bold text-navy-900">Resumo Geral</h3>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-navy-900">{empresas.length}</p>
+              <p className="text-xs text-navy-500">Total Empresas</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-success-600">{empresas.filter(e => e.situacao?.toLowerCase() === 'ativa').length}</p>
+              <p className="text-xs text-navy-500">Ativas</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-amber-600">{empresas.reduce((acc, e) => acc + (e._count?.inspecoes || 0), 0)}</p>
+              <p className="text-xs text-navy-500">Total Inspeções</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-extrabold text-blue-600">{empresas.reduce((acc, e) => acc + (e._count?.colaboradores || 0), 0)}</p>
+              <p className="text-xs text-navy-500">Total Colaboradores</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
