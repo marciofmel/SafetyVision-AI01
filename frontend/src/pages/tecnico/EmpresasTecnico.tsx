@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiSearch, FiLoader, FiCheckCircle, FiChevronDown, FiChevronUp, FiEye } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSave, FiX, FiSearch, FiLoader, FiCheckCircle, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../api';
 
@@ -324,8 +324,8 @@ export default function EmpresasTecnico() {
         {empresas.length === 0 ? (
           <div className="card p-12 text-center"><p className="text-sm text-navy-500">Nenhuma empresa cadastrada</p></div>
         ) : empresas.map((e) => (
-          <div key={e.id} className="card p-4 transition-all hover:shadow-md">
-            <div className="flex items-start justify-between">
+          <Link key={e.id} to={`/tecnico/empresas/${e.id}`} className="card block p-4 transition-all hover:shadow-md">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-navy-900">{e.nome}</p>
                 {e.cnpj && <p className="text-xs text-navy-500">CNPJ: {e.cnpj}</p>}
@@ -338,13 +338,12 @@ export default function EmpresasTecnico() {
                 </div>
                 {e.atividadePrincipal && <p className="mt-1 text-xs text-navy-400">Atividade: {e.atividadePrincipal}</p>}
               </div>
-              <div className="flex gap-1">
-                <Link to={`/tecnico/empresas/${e.id}`} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Ver detalhes"><FiEye size={14} /></Link>
-                <button onClick={() => handleEdit(e)} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100"><FiEdit2 size={14} /></button>
-                <button onClick={() => handleDelete(e.id)} className="rounded-lg p-2 text-navy-400 hover:bg-danger-100 hover:text-danger-600"><FiTrash2 size={14} /></button>
+              <div className="flex shrink-0 gap-1">
+                <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); handleEdit(e); }} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100"><FiEdit2 size={14} /></button>
+                <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); handleDelete(e.id); }} className="rounded-lg p-2 text-navy-400 hover:bg-danger-100 hover:text-danger-600"><FiTrash2 size={14} /></button>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiBriefcase, FiUsers, FiClipboard, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiMapPin, FiPhone, FiMail, FiGlobe } from 'react-icons/fi';
+import { FiArrowLeft, FiBriefcase, FiUsers, FiClipboard, FiShield, FiAlertTriangle, FiCheckCircle, FiClock, FiMapPin, FiPhone, FiMail, FiGlobe, FiFileText, FiShare2, FiDownload, FiEdit3, FiMessageSquare, FiMail as FiMailIcon } from 'react-icons/fi';
 import api from '../../api';
 
 interface Empresa {
@@ -16,7 +16,11 @@ interface Setor { id: string; nome: string; descricao: string; _count?: { inspec
 interface Colaborador { id: string; nome: string; cargo: string; setor?: string; email: string; telefone: string; status: string }
 interface Inspecao { id: string; status: string; createdAt: string; notaConformidade: number | null; setor?: { nome: string }; _count?: { midias: number; riscos: number; epiViolacoes: number } }
 
-type Tab = 'visaoGeral' | 'setores' | 'colaboradores' | 'inspecoes';
+interface Laudo { id: string; titulo: string; tipo: string; createdAt: string; inspecaoId?: string; empresaId: string; aprovado: boolean }
+interface PGR { id: string; titulo: string; revisao: number; vigenciaInicio?: string; vigenciaFim?: string; createdAt: string; aprovado: boolean; itens?: any[] }
+interface Cronograma { id: string; nome: string; frequencia: string; proximaData?: string; createdAt: string; inspecoes?: any[] }
+
+type Tab = 'visaoGeral' | 'setores' | 'colaboradores' | 'inspecoes' | 'relatorios';
 
 export default function EmpresaDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +28,9 @@ export default function EmpresaDetalhe() {
   const [setores, setSetores] = useState<Setor[]>([]);
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
   const [inspecoes, setInspecoes] = useState<Inspecao[]>([]);
+  const [laudos, setLaudos] = useState<Laudo[]>([]);
+  const [pgrs, setPgrs] = useState<PGR[]>([]);
+  const [cronogramas, setCronogramas] = useState<Cronograma[]>([]);
   const [tab, setTab] = useState<Tab>('visaoGeral');
   const [loading, setLoading] = useState(true);
 
@@ -35,11 +42,17 @@ export default function EmpresaDetalhe() {
       api.get(`/empresas/${id}/setores`),
       api.get(`/empresas/${id}/colaboradores`),
       api.get(`/empresas/${id}/inspecoes`),
-    ]).then(([e, s, c, i]) => {
+      api.get(`/laudos?empresaId=${id}`),
+      api.get(`/pgr?empresaId=${id}`),
+      api.get(`/cronogramas?empresaId=${id}`),
+    ]).then(([e, s, c, i, l, p, cr]) => {
       setEmpresa(e.data);
       setSetores(s.data);
       setColaboradores(c.data);
       setInspecoes(i.data);
+      setLaudos(l.data || []);
+      setPgrs(p.data || []);
+      setCronogramas(cr.data || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
@@ -71,6 +84,7 @@ export default function EmpresaDetalhe() {
     { key: 'setores', label: 'Setores', icon: <FiMapPin size={16} />, count: c.setores },
     { key: 'colaboradores', label: 'Colaboradores', icon: <FiUsers size={16} />, count: c.colaboradores },
     { key: 'inspecoes', label: 'Inspeções', icon: <FiClipboard size={16} />, count: c.inspecoes },
+    { key: 'relatorios', label: 'Relatórios', icon: <FiFileText size={16} />, count: (laudos.length + pgrs.length + cronogramas.length) },
   ];
 
   return (
@@ -259,6 +273,53 @@ export default function EmpresaDetalhe() {
               </div>
             </Link>
           ))}
+        </div>
+      )}
+
+      {tab === 'relatorios' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-900"><FiFileText size={16} className="text-amber-600" /> Laudos ({laudos.length})</h3>
+            {laudos.length === 0 ? <div className="card p-8 text-center text-sm text-navy-500">Nenhum laudo gerado</div> : <div className="space-y-2">{laudos.map(l => (
+              <div key={l.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{l.titulo}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className={`rounded-full px-2 py-0.5 ${l.aprovado ? 'bg-success-100 text-success-700' : 'bg-amber-100 text-amber-700'}`}>{l.aprovado ? 'Aprovado' : 'Pendente'}</span><span>{l.tipo}</span><span>{new Date(l.createdAt).toLocaleDateString('pt-BR')}</span></div></div>
+                <div className="flex gap-1">
+                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`Laudo: ${l.titulo} - ${window.location.origin}/api/laudos/${l.id}/html`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
+                  <a href={`mailto:?subject=${encodeURIComponent(l.titulo)}&body=${encodeURIComponent(`${window.location.origin}/api/laudos/${l.id}/html`)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
+                  <a href={`/api/laudos/${l.id}/html`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></a>
+                </div>
+              </div>
+            ))}</div>}
+          </div>
+          <div>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-900"><FiShield size={16} className="text-navy-600" /> PGRs ({pgrs.length})</h3>
+            {pgrs.length === 0 ? <div className="card p-8 text-center text-sm text-navy-500">Nenhum PGR cadastrado</div> : <div className="space-y-2">{pgrs.map(p => (
+              <div key={p.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{p.titulo}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className={`rounded-full px-2 py-0.5 ${p.aprovado ? 'bg-success-100 text-success-700' : 'bg-amber-100 text-amber-700'}`}>{p.aprovado ? 'Aprovado' : 'Em revisão'}</span><span>Rev {p.revisao}</span><span>{p.itens?.length || 0} itens</span><span>{new Date(p.createdAt).toLocaleDateString('pt-BR')}</span></div></div>
+                <div className="flex gap-1">
+                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`PGR: ${p.titulo}`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
+                  <a href={`mailto:?subject=${encodeURIComponent(p.titulo)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
+                  <button className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></button>
+                </div>
+              </div>
+            ))}</div>}
+          </div>
+          <div>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-900"><FiClipboard size={16} className="text-amber-600" /> Cronogramas ({cronogramas.length})</h3>
+            {cronogramas.length === 0 ? <div className="card p-8 text-center text-sm text-navy-500">Nenhum cronograma cadastrado</div> : <div className="space-y-2">{cronogramas.map(c => (
+              <div key={c.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1"><p className="truncate font-bold text-navy-900">{c.nome}</p><div className="mt-1 flex flex-wrap gap-2 text-xs text-navy-500"><span className="rounded-full bg-navy-100 px-2 py-0.5 capitalize">{c.frequencia}</span>{c.proximaData && <span>Próxima: {new Date(c.proximaData).toLocaleDateString('pt-BR')}</span>}<span>{c.inspecoes?.length || 0} agendadas</span></div></div>
+                <div className="flex gap-1">
+                  <button className="rounded-lg p-2 text-navy-400 hover:bg-navy-100" title="Editar"><FiEdit3 size={16} /></button>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`Cronograma: ${c.nome}`)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg p-2 text-green-600 hover:bg-green-50" title="WhatsApp"><FiMessageSquare size={16} /></a>
+                  <a href={`mailto:?subject=${encodeURIComponent(c.nome)}`} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50" title="E-mail"><FiMailIcon size={16} /></a>
+                  <button className="rounded-lg p-2 text-amber-600 hover:bg-amber-50" title="Baixar"><FiDownload size={16} /></button>
+                </div>
+              </div>
+            ))}</div>}
+          </div>
         </div>
       )}
     </div>
