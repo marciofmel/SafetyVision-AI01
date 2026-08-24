@@ -33,7 +33,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Lado esquerdo - Branding */}
       <div className="hidden w-1/2 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">

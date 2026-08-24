@@ -5,7 +5,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-navy-950 via-navy-900 to-navy-950">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-navy-950 via-navy-900 to-navy-950">
       <nav className="flex items-center justify-between px-6 py-4 lg:px-12">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">

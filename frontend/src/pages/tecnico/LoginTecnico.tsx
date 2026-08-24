@@ -31,7 +31,7 @@ export default function LoginTecnico() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <div className="hidden w-1/2 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950 lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div className="max-w-md text-center">
           <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-amber-500/20 backdrop-blur-sm">

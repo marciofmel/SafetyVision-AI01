@@ -13,7 +13,7 @@ export default function Layout() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-navy-50">
+    <div className="flex h-screen overflow-hidden bg-navy-50">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 z-40 flex h-screen w-72 flex-col border-r border-navy-100 bg-white">
         {/* Logo */}
@@ -100,7 +100,7 @@ export default function Layout() {
       </aside>
 
       {/* Main */}
-      <main className="ml-72 flex-1 p-8">
+      <main className="ml-72 flex-1 overflow-y-auto p-8">
         <Outlet />
       </main>
     </div>
