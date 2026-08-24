@@ -327,16 +327,16 @@ export default function EmpresasTecnico() {
           <Link key={e.id} to={`/tecnico/empresas/${e.id}`} className="card block p-4 transition-all hover:shadow-md">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-navy-900">{e.nome}</p>
-                {e.cnpj && <p className="text-xs text-navy-500">CNPJ: {e.cnpj}</p>}
-                {e.endereco && <p className="text-xs text-navy-500">{e.endereco}{e.bairro ? `, ${e.bairro}` : ''}{e.cidade && e.estado ? ` - ${e.cidade}/${e.estado}` : ''}</p>}
-                {e.cep && <p className="text-xs text-navy-400">CEP: {e.cep}</p>}
-                <div className="mt-1 flex flex-wrap gap-3 text-xs text-navy-400">
-                  {e.telefone && <span>Tel: {e.telefone}</span>}
-                  {e.email && <span>Email: {e.email}</span>}
+                <p className="break-words font-bold text-navy-900">{e.nome}</p>
+                {e.cnpj && <p className="break-words text-xs text-navy-500">CNPJ: {e.cnpj}</p>}
+                {e.endereco && <p className="break-words text-xs text-navy-500">{e.endereco}{e.bairro ? `, ${e.bairro}` : ''}{e.cidade && e.estado ? ` - ${e.cidade}/${e.estado}` : ''}</p>}
+                {e.cep && <p className="break-words text-xs text-navy-400">CEP: {e.cep}</p>}
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-navy-400">
+                  {e.telefone && <span className="break-all">Tel: {e.telefone}</span>}
+                  {e.email && <span className="break-all">Email: {e.email}</span>}
                   {e.situacao && <span className="text-success-600">{e.situacao}</span>}
                 </div>
-                {e.atividadePrincipal && <p className="mt-1 text-xs text-navy-400">Atividade: {e.atividadePrincipal}</p>}
+                {e.atividadePrincipal && <p className="mt-1 break-words text-xs text-navy-400">Atividade: {e.atividadePrincipal}</p>}
               </div>
               <div className="flex shrink-0 gap-1">
                 <button onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); handleEdit(e); }} className="rounded-lg p-2 text-navy-400 hover:bg-navy-100"><FiEdit2 size={14} /></button>

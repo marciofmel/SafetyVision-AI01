@@ -266,7 +266,7 @@ export default function TecnicoLayout() {
   );
 
   return (
-    <div className="flex min-h-screen bg-navy-50">
+    <div className="flex min-h-screen overflow-x-hidden bg-navy-50">
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -279,7 +279,7 @@ export default function TecnicoLayout() {
         <Sidebar />
       </div>
 
-      <div className="flex-1 lg:ml-72">
+      <div className="flex-1 min-w-0 overflow-x-hidden lg:ml-72">
         {/* Header mobile */}
         <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-navy-100 bg-white px-4 lg:hidden">
           <button onClick={() => setSidebarOpen(true)} className="rounded-lg p-2 text-navy-600 hover:bg-navy-100">
