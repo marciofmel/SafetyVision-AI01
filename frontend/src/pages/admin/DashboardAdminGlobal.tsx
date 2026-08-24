@@ -87,7 +87,7 @@ export default function DashboardAdminGlobal() {
         {/* Top Empresas */}
         <div className="card p-6 lg:col-span-2">
           <h3 className="mb-4 text-lg font-bold text-navy-900">Top Empresas por Inspeções</h3>
-          <div className="overflow-x-auto">
+          <div className="w-full">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-navy-100">
                 <th className="px-3 py-2 text-left font-semibold text-navy-600">Empresa</th>
@@ -98,7 +98,7 @@ export default function DashboardAdminGlobal() {
               <tbody>
                 {data.topEmpresas.map((e: any) => (
                   <tr key={e.id} className="border-b border-navy-50">
-                    <td className="px-3 py-2 font-medium text-navy-900">{e.nome}</td>
+                    <td className="break-words px-3 py-2 font-medium text-navy-900">{e.nome}</td>
                     <td className="px-3 py-2 text-center">{e._count.inspecoes}</td>
                     <td className="px-3 py-2 text-center">{e._count.colaboradores}</td>
                     <td className="px-3 py-2 text-center">{e._count.setores}</td>

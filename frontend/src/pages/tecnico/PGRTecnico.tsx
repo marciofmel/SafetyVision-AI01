@@ -179,8 +179,8 @@ export default function PGRTecnico() {
               </div>
               {p.itens && p.itens.length > 0 && (
                 <div className="p-4">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
+                  <div className="w-full">
+                    <table className="w-full table-fixed text-xs">
                       <thead><tr className="border-b border-navy-100">
                         <th className="px-2 py-1.5 text-left font-semibold text-navy-600">Processo</th>
                         <th className="px-2 py-1.5 text-left font-semibold text-navy-600">Perigo</th>
@@ -192,11 +192,11 @@ export default function PGRTecnico() {
                       <tbody>
                         {p.itens.map(item => (
                           <tr key={item.id} className="border-b border-navy-50">
-                            <td className="px-2 py-2 font-medium text-navy-900">{item.processo}</td>
-                            <td className="px-2 py-2 text-navy-600">{item.perigo}</td>
-                            <td className="px-2 py-2 text-navy-500 max-w-[200px] truncate">{item.riscos}</td>
-                            <td className="px-2 py-2 text-navy-500 max-w-[200px] truncate">{item.medidasControle || '---'}</td>
-                            <td className="px-2 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${prioridadeColors[item.prioridade || 'media']}`}>{item.prioridade || 'media'}</span></td>
+                            <td className="break-words px-2 py-2 font-medium text-navy-900">{item.processo}</td>
+                            <td className="break-words px-2 py-2 text-navy-600">{item.perigo}</td>
+                            <td className="break-words px-2 py-2 text-navy-500">{item.riscos}</td>
+                            <td className="break-words px-2 py-2 text-navy-500">{item.medidasControle || '---'}</td>
+                            <td className="break-words px-2 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${prioridadeColors[item.prioridade || 'media']}`}>{item.prioridade || 'media'}</span></td>
                             <td className="px-2 py-2"><button onClick={() => handleDeleteItem(item.id)} className="text-danger-500 hover:text-danger-700"><FiTrash2 size={12} /></button></td>
                           </tr>
                         ))}

@@ -180,7 +180,7 @@ export default function CalculadoraNR28() {
           <FiInfo className="text-navy-400" size={18} />
           <h3 className="font-bold text-navy-900">Tabela de Referência NR-28</h3>
         </div>
-        <div className="overflow-x-auto">
+        <div className="w-full">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-navy-200">
@@ -208,8 +208,8 @@ export default function CalculadoraNR28() {
               ].map(r => (
                 <tr key={r.nr} className="border-b border-navy-100 hover:bg-navy-50">
                   <td className="py-2 px-3 font-semibold text-navy-900">{r.nr}</td>
-                  <td className="py-2 px-3 text-navy-600">{r.item}</td>
-                  <td className="py-2 px-3 text-right font-semibold text-navy-900">R$ {r.valor.toLocaleString('pt-BR')}</td>
+                  <td className="break-words py-2 px-3 text-navy-600">{r.item}</td>
+                  <td className="whitespace-nowrap py-2 px-3 text-right font-semibold text-navy-900">R$ {r.valor.toLocaleString('pt-BR')}</td>
                 </tr>
               ))}
             </tbody>
