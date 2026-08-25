@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiRefreshCw } from 'react-icons/fi';
+import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiRefreshCw, FiShare2 } from 'react-icons/fi';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -68,9 +68,9 @@ export default function Relatorio() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link to="/tecnico" className="mb-6 inline-flex items-center gap-1 text-sm font-semibold text-navy-500 hover:text-navy-700">
-        <FiArrowLeft size={14} /> Voltar ao Dashboard
-      </Link>
+      <button onClick={() => navigate(-1)} className="mb-6 inline-flex items-center gap-1 text-sm font-semibold text-navy-500 hover:text-navy-700">
+        <FiArrowLeft size={14} /> Voltar
+      </button>
 
       <div className="card overflow-hidden">
         {/* Header */}
@@ -120,6 +120,28 @@ export default function Relatorio() {
             {downloading ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
             {downloading ? 'Baixando...' : 'Baixar Relatório PDF'}
           </button>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                const texto = encodeURIComponent(`Relatório de Inspeção SST\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\nRiscos: ${inspecao.riscos?.length || 0} encontrados`);
+                window.open(`https://wa.me/?text=${texto}`, '_blank');
+              }}
+              className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100"
+            >
+              <FiShare2 size={16} /> Enviar WhatsApp
+            </button>
+            <button
+              onClick={() => {
+                const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
+                const corpo = encodeURIComponent(`Relatório de Inspeção SST\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\nRiscos: ${inspecao.riscos?.length || 0} encontrados\nEPIs Ausentes: ${inspecao.epiViolacoes?.filter((e: any) => e.status === 'ausente').length || 0}\nFotos Analisadas: ${inspecao.midias?.length || 0}`);
+                window.location.href = `mailto:?subject=${assunto}&body=${corpo}`;
+              }}
+              className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100"
+            >
+              <FiShare2 size={16} /> Enviar Email
+            </button>
+          </div>
         </div>
       </div>
     </div>
