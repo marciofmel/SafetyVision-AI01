@@ -11,7 +11,85 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
+
+  const getPDFBlob = async (): Promise<Blob> => {
+    const token = localStorage.getItem('sv_token');
+    const response = await fetch(`/api/relatorio/${id}/relatorio`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error('Erro ao gerar PDF');
+    return await response.blob();
+  };
+
+  const shareWhatsApp = async () => {
+    setSharing(true);
+    try {
+      const blob = await getPDFBlob();
+      const file = new File([blob], `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`, { type: 'application/pdf' });
+      const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+      } else {
+        // Fallback: baixar PDF e abrir WhatsApp com texto
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('PDF baixado! Anexe no WhatsApp.');
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\n📄 PDF baixado. Anexe-o na conversa.')}`, '_blank');
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        toast.error('Erro ao compartilhar');
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const shareEmail = async () => {
+    setSharing(true);
+    try {
+      const blob = await getPDFBlob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'} - ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`);
+      const corpo = encodeURIComponent(
+        `Prezado(a),\n\n` +
+        `Segue em anexo o Relatório de Inspeção de Segurança do Trabalho.\n\n` +
+        `Dados da Inspeção:\n` +
+        `• Empresa: ${inspecao.empresa?.nome || '---'}\n` +
+        `• Setor: ${inspecao.setor?.nome || '---'}\n` +
+        `• Nota de Conformidade: ${inspecao.notaConformidade ?? '---'}/100\n` +
+        `• Riscos Identificados: ${inspecao.riscos?.length || 0}\n` +
+        `• EPIs Ausentes: ${inspecao.epiViolacoes?.filter((e: any) => e.status === 'ausente').length || 0}\n` +
+        `• Fotos Analisadas: ${inspecao.midias?.length || 0}\n` +
+        `• Data: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}\n\n` +
+        `O PDF está anexado a este email.\n\n` +
+        `Att,\n${inspecao.usuario?.nome || 'Técnico SafetyVision'}\nSafetyVision AI`
+      );
+      toast.success('PDF baixado! Anexe no email.');
+      window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    } catch (err) {
+      toast.error('Erro ao preparar email');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   useEffect(() => {
     api.get(`/inspecoes/${id}`).then(({ data }) => {
@@ -125,23 +203,20 @@ export default function Relatorio() {
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <button
-              onClick={() => {
-                const texto = encodeURIComponent(`Relatório de Inspeção SST\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\nRiscos: ${inspecao.riscos?.length || 0} encontrados`);
-                window.open(`https://wa.me/?text=${texto}`, '_blank');
-              }}
-              className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100"
+              onClick={shareWhatsApp}
+              disabled={sharing}
+              className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100 disabled:opacity-50"
             >
-              <FiShare2 size={16} /> Enviar WhatsApp
+              {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              {sharing ? 'Preparando...' : 'Enviar PDF WhatsApp'}
             </button>
             <button
-              onClick={() => {
-                const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
-                const corpo = encodeURIComponent(`Relatório de Inspeção SST\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\nRiscos: ${inspecao.riscos?.length || 0} encontrados\nEPIs Ausentes: ${inspecao.epiViolacoes?.filter((e: any) => e.status === 'ausente').length || 0}\nFotos Analisadas: ${inspecao.midias?.length || 0}`);
-                window.location.href = `mailto:?subject=${assunto}&body=${corpo}`;
-              }}
-              className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100"
+              onClick={shareEmail}
+              disabled={sharing}
+              className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
             >
-              <FiShare2 size={16} /> Enviar Email
+              {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              {sharing ? 'Preparando...' : 'Enviar PDF Email'}
             </button>
           </div>
 
