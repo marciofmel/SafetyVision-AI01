@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiRefreshCw, FiShare2 } from 'react-icons/fi';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiShare2, FiEye, FiEyeOff, FiImage, FiFileText, FiClock, FiMapPin } from 'react-icons/fi';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -10,6 +10,8 @@ export default function Relatorio() {
   const [inspecao, setInspecao] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api.get(`/inspecoes/${id}`).then(({ data }) => {
@@ -142,6 +144,148 @@ export default function Relatorio() {
               <FiShare2 size={16} /> Enviar Email
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              setShowDetails(!showDetails);
+              setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+            }}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-200 bg-navy-50 py-3 text-sm font-bold text-navy-700 transition-all hover:bg-navy-100"
+          >
+            {showDetails ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+            {showDetails ? 'Fechar Detalhes' : 'Examinar Relatório'}
+          </button>
+
+          {showDetails && (
+            <div ref={detailsRef} className="mt-6 border-t border-navy-100 pt-6">
+              <h2 className="mb-4 text-lg font-extrabold text-navy-900">Detalhes Completos da Inspeção</h2>
+
+              {/* Informações gerais */}
+              <div className="mb-4 rounded-xl bg-navy-50 p-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2"><FiFileText className="text-navy-400" /><span className="text-navy-500">Empresa:</span> <span className="font-bold text-navy-900">{inspecao.empresa?.nome || '---'}</span></div>
+                  <div className="flex items-center gap-2"><FiMapPin className="text-navy-400" /><span className="text-navy-500">Setor:</span> <span className="font-bold text-navy-900">{inspecao.setor?.nome || '---'}</span></div>
+                  <div className="flex items-center gap-2"><FiClock className="text-navy-400" /><span className="text-navy-500">Início:</span> <span className="font-bold text-navy-900">{inspecao.dataInicio ? new Date(inspecao.dataInicio).toLocaleString('pt-BR') : '---'}</span></div>
+                  <div className="flex items-center gap-2"><FiClock className="text-navy-400" /><span className="text-navy-500">Fim:</span> <span className="font-bold text-navy-900">{inspecao.dataFim ? new Date(inspecao.dataFim).toLocaleString('pt-BR') : '---'}</span></div>
+                  {inspecao.observacoes && (
+                    <div className="col-span-2 mt-2 rounded-lg bg-white p-3 border border-navy-100">
+                      <p className="text-xs font-bold text-navy-400 mb-1">Observações</p>
+                      <p className="text-sm text-navy-700">{inspecao.observacoes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Riscos */}
+              {inspecao.riscos?.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-danger-700">
+                    <FiAlertTriangle size={16} /> Riscos Identificados ({inspecao.riscos.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {inspecao.riscos.map((r: any) => (
+                      <div key={r.id} className="rounded-xl border border-navy-100 bg-white p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-navy-900 break-words">{r.categoria}</p>
+                            <p className="mt-1 text-xs text-navy-600 break-words">{r.descricao}</p>
+                            {r.localIdentificado && <p className="mt-1 text-xs text-navy-400">Local: {r.localIdentificado}</p>}
+                          </div>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            r.gravidade === 'critica' ? 'bg-red-100 text-red-700' :
+                            r.gravidade === 'alta' ? 'bg-orange-100 text-orange-700' :
+                            r.gravidade === 'media' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                            {r.gravidade}
+                          </span>
+                        </div>
+                        {r.medidasPreventivas && <p className="mt-2 text-xs text-navy-500 break-words"><strong>Prevenção:</strong> {r.medidasPreventivas}</p>}
+                        {r.medidasCorretivas && <p className="mt-1 text-xs text-navy-500 break-words"><strong>Correção:</strong> {r.medidasCorretivas}</p>}
+                        {r.nrsRelacionadas && <p className="mt-1 text-[10px] font-bold text-amber-600">NRs: {r.nrsRelacionadas}</p>}
+                        {r.imagemUrl && (
+                          <img src={r.imagemUrl} alt={r.categoria} className="mt-2 max-h-40 rounded-lg object-cover" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* EPIs */}
+              {inspecao.epiViolacoes?.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
+                    <FiShield size={16} /> Violações de EPI ({inspecao.epiViolacoes.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {inspecao.epiViolacoes.map((e: any) => (
+                      <div key={e.id} className="flex items-center gap-3 rounded-xl border border-navy-100 bg-white p-3">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${e.status === 'ausente' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                          <FiShield size={14} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-navy-900 break-words">{e.epiNome}</p>
+                          <p className="text-xs text-navy-500">Status: {e.status === 'ausente' ? 'Ausente' : e.status === 'danificado' ? 'Danificado' : 'Incorreto'}</p>
+                          {e.descricao && <p className="text-xs text-navy-400 break-words">{e.descricao}</p>}
+                        </div>
+                        {e.imagemUrl && <img src={e.imagemUrl} alt={e.epiNome} className="h-12 w-12 shrink-0 rounded-lg object-cover" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Checklist */}
+              {inspecao.checklistRespostas?.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
+                    <FiCheckCircle size={16} /> Respostas do Checklist ({inspecao.checklistRespostas.length})
+                  </h3>
+                  <div className="space-y-1">
+                    {inspecao.checklistRespostas.map((c: any) => (
+                      <div key={c.id} className="flex items-center gap-3 rounded-lg bg-white border border-navy-100 px-3 py-2">
+                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${c.conformidade === 'conforme' ? 'bg-success-500' : 'bg-danger-500'}`}>
+                          {c.conformidade === 'conforme' ? 'C' : 'NC'}
+                        </span>
+                        <span className="text-xs text-navy-700 break-words flex-1">{c.item?.texto || 'Item'}</span>
+                        {c.observacao && <span className="text-[10px] text-navy-400 shrink-0">({c.observacao})</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mídias */}
+              {inspecao.midias?.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
+                    <FiImage size={16} /> Fotos e Vídeos ({inspecao.midias.length})
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {inspecao.midias.map((m: any) => (
+                      <div key={m.id} className="group relative overflow-hidden rounded-xl border border-navy-100">
+                        {m.tipo === 'video' ? (
+                          <video src={m.url} className="aspect-square w-full object-cover" controls preload="metadata" />
+                        ) : (
+                          <img src={m.url} alt={m.nome} className="aspect-square w-full object-cover" />
+                        )}
+                        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+                          <p className="w-full p-2 text-[10px] font-bold text-white truncate">{m.nome}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Nota final */}
+              <div className="rounded-xl bg-gradient-to-r from-navy-900 to-navy-800 p-4 text-center">
+                <p className="text-xs font-bold text-navy-300">Nota de Conformidade</p>
+                <p className="mt-1 text-4xl font-extrabold text-white">{inspecao.notaConformidade ?? '---'}<span className="text-lg text-navy-300">/100</span></p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
