@@ -10,131 +10,37 @@ const router = Router();
 const uploadsDir = path.join(__dirname, '../../uploads');
 const anotadasDir = path.join(__dirname, '../../uploads/anotadas');
 
-const PAGE_W = 595.28;
-const PAGE_H = 841.89;
-const MARGIN_L = 50;
-const MARGIN_R = 50;
-const MARGIN_T = 50;
-const MARGIN_B = 50;
-const CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R;
-const MAX_Y = PAGE_H - MARGIN_B;
+const W = 595.28;
+const H = 841.89;
+const ML = 50;
+const MR = 50;
+const CW = W - ML - MR;
 
-const COL = {
-  navy: '#0F172A',
-  amber: '#F59E0B',
-  white: '#FFFFFF',
-  bg: '#F8FAFC',
-  border: '#E2E8F0',
-  textDark: '#1E293B',
-  textMid: '#475569',
-  textLight: '#94A3B8',
-  red: '#DC2626',
-  redBg: '#FEF2F2',
-  orange: '#EA580C',
-  orangeBg: '#FFF7ED',
-  green: '#16A34A',
-  greenBg: '#F0FDF4',
-  blue: '#2563EB',
-  blueBg: '#EFF6FF',
+const C = {
+  navy: '#0F172A', amber: '#F59E0B', white: '#FFFFFF',
+  gray50: '#F8FAFC', gray100: '#F1F5F9', gray200: '#E2E8F0', gray300: '#CBD5E1',
+  gray400: '#94A3B8', gray500: '#64748B', gray600: '#475569', gray700: '#334155',
+  red: '#DC2626', redBg: '#FEF2F2',
+  orange: '#EA580C', orangeBg: '#FFF7ED',
+  green: '#16A34A', greenBg: '#F0FDF4',
+  blue: '#2563EB', blueBg: '#EFF6FF',
   amberBg: '#FFFBEB',
 };
 
-class PDF {
-  doc: PDFKit.PDFDocument;
-  y = 0;
-  pageNum = 0;
-  backgrounds: Array<{ x: number; y: number; w: number; h: number; color: string; radius?: number }> = [];
+function rect(doc: PDFKit.PDFDocument, x: number, y: number, w: number, h: number, color: string, r?: number) {
+  doc.save();
+  if (r) doc.roundedRect(x, y, w, h, r).fill(color);
+  else doc.rect(x, y, w, h).fill(color);
+  doc.restore();
+}
 
-  constructor() {
-    this.doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false, bufferPages: true });
-  }
-
-  newPage(hasBg = true) {
-    if (this.pageNum > 0) {
-      this.drawBackgrounds();
-      this.drawFooter();
-    }
-    this.doc.addPage({ margin: 0 });
-    this.pageNum++;
-    this.y = MARGIN_T;
-    this.backgrounds = [];
-    if (hasBg) {
-      this.backgrounds.push({ x: 0, y: 0, w: PAGE_W, h: PAGE_H, color: COL.white });
-    }
-  }
-
-  addBg(x: number, y: number, w: number, h: number, color: string, radius?: number) {
-    this.backgrounds.push({ x, y, w, h, color, radius });
-  }
-
-  drawBackgrounds() {
-    for (const bg of this.backgrounds) {
-      this.doc.save();
-      if (bg.radius) {
-        this.doc.roundedRect(bg.x, bg.y, bg.w, bg.h, bg.radius).fill(bg.color);
-      } else {
-        this.doc.rect(bg.x, bg.y, bg.w, bg.h).fill(bg.color);
-      }
-      this.doc.restore();
-    }
-  }
-
-  drawFooter() {
-    this.doc.save();
-    this.doc.rect(0, PAGE_H - 28, PAGE_W, 28).fill(COL.navy);
-    this.doc.fontSize(7).font('Helvetica').fillColor(COL.textLight);
-    this.doc.text('SafetyVision AI  |  Relatório de Inspeção', MARGIN_L, PAGE_H - 20, { width: 300 });
-    this.doc.fillColor(COL.amber);
-    this.doc.text(`Página ${this.pageNum}`, PAGE_W - MARGIN_R - 80, PAGE_H - 20, { width: 80, align: 'right' });
-    this.doc.restore();
-  }
-
-  checkPage(needed: number) {
-    if (this.y + needed > MAX_Y) {
-      this.newPage();
-    }
-  }
-
-  drawRect(x: number, y: number, w: number, h: number, color: string, radius?: number) {
-    this.doc.save();
-    if (radius) {
-      this.doc.roundedRect(x, y, w, h, radius).fill(color);
-    } else {
-      this.doc.rect(x, y, w, h).fill(color);
-    }
-    this.doc.restore();
-  }
-
-  drawBorderRect(x: number, y: number, w: number, h: number, fillColor: string, strokeColor: string, radius?: number) {
-    this.doc.save();
-    if (radius) {
-      this.doc.roundedRect(x, y, w, h, radius).fillAndStroke(fillColor, strokeColor);
-    } else {
-      this.doc.rect(x, y, w, h).fillAndStroke(fillColor, strokeColor);
-    }
-    this.doc.restore();
-  }
-
-  txt(str: string, x: number, y: number, opts: { size?: number; font?: string; color?: string; width?: number; align?: string } = {}) {
-    this.doc.save();
-    this.doc.fontSize(opts.size ?? 10).font(opts.font ?? 'Helvetica').fillColor(opts.color ?? COL.textDark);
-    this.doc.text(str, x, y, { width: opts.width ?? CONTENT_W, align: (opts.align as any) ?? 'left', lineGap: 0 });
-    this.doc.restore();
-  }
-
-  gap(h: number) {
-    this.y += h;
-  }
-
-  ensureSpace(needed: number) {
-    this.checkPage(needed);
-  }
-
-  finalize() {
-    this.drawBackgrounds();
-    this.drawFooter();
-    this.doc.end();
-  }
+function txt(doc: PDFKit.PDFDocument, str: string, x: number, y: number, opts: {
+  size?: number; font?: string; color?: string; w?: number; align?: string
+} = {}) {
+  doc.save();
+  doc.fontSize(opts.size ?? 10).font(opts.font ?? 'Helvetica').fillColor(opts.color ?? C.gray700);
+  doc.text(str, x, y, { width: opts.w ?? CW, align: (opts.align as any) ?? 'left', lineGap: 0 });
+  doc.restore();
 }
 
 router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
@@ -143,96 +49,97 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
     const inspecao = await prisma.inspecao.findFirst({
       where: { id: inspecaoId, usuarioId: req.userId! },
       include: {
-        empresa: true,
-        setor: true,
+        empresa: true, setor: true,
         usuario: { select: { nome: true, email: true } },
-        riscos: true,
-        epiViolacoes: true,
-        midias: true,
+        riscos: true, epiViolacoes: true, midias: true,
       },
     });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
 
-    const pdf = new PDF();
-    const { doc } = pdf;
-
+    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=relatorio-${inspecao.id.slice(0, 8)}.pdf`);
     doc.pipe(res);
 
     const nota = inspecao.notaConformidade ?? 0;
     const totalRiscos = inspecao.riscos.length;
-    const epiAusentes = inspecao.epiViolacoes.filter(e => e.status === 'ausente').length;
-    const epiIncorretos = inspecao.epiViolacoes.filter(e => e.status === 'incorreto').length;
-    const riscosPorGravidade = {
-      critica: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'critica').length,
-      alta: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'alta').length,
-      media: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'media').length,
-      baixa: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'baixa').length,
-    };
+    const epiIrreg = inspecao.epiViolacoes.filter(e => e.status !== 'correto').length;
+    const riscosPorGrav: Record<string, number> = { critica: 0, alta: 0, media: 0, baixa: 0 };
+    inspecao.riscos.forEach(r => { const k = r.gravidade.toLowerCase(); if (riscosPorGrav[k] !== undefined) riscosPorGrav[k]++; });
 
-    // ════════════════════════════════════════════════
+    function footer() {
+      rect(doc, 0, H - 28, W, 28, C.navy);
+      txt(doc, 'SafetyVision AI', ML, H - 20, { size: 7, color: C.gray400, w: 200 });
+    }
+
+    let pageNum = 0;
+
+    // ════════════════════════════════════════
     // CAPA
-    // ════════════════════════════════════════════════
-    pdf.newPage(false);
-    pdf.backgrounds = [];
-    pdf.addBg(0, 0, PAGE_W, PAGE_H, COL.navy);
-    pdf.addBg(0, 0, PAGE_W, 6, COL.amber);
+    // ════════════════════════════════════════
+    doc.addPage({ margin: 0 });
+    pageNum++;
+    rect(doc, 0, 0, W, H, C.navy);
+    rect(doc, 0, 0, W, 6, C.amber);
 
-    const logoX = (PAGE_W - 90) / 2;
-    pdf.addBg(logoX, 80, 90, 90, COL.amber, 16);
-    pdf.addBg(logoX + 5, 85, 80, 80, COL.navy, 12);
+    const logoX = (W - 80) / 2;
+    rect(doc, logoX, 80, 80, 80, C.amber, 14);
+    rect(doc, logoX + 4, 84, 72, 72, C.navy, 10);
+    txt(doc, 'SV', 0, 103, { size: 32, font: 'Helvetica-Bold', color: C.amber, w: W, align: 'center' });
 
-    pdf.txt('SV', 0, 105, { size: 36, font: 'Helvetica-Bold', color: COL.amber, width: PAGE_W, align: 'center' });
+    txt(doc, 'SAFETYVISION AI', 0, 195, { size: 26, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
+    txt(doc, 'Relatório de Inspeção de Segurança do Trabalho', 0, 232, { size: 11, color: C.gray400, w: W, align: 'center' });
 
-    pdf.txt('SAFETYVISION AI', 0, 200, { size: 28, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
-    pdf.txt('Relatório de Inspeção de Segurança do Trabalho', 0, 240, { size: 12, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
+    rect(doc, 210, 262, 175, 2, C.amber);
 
-    pdf.addBg(210, 270, 175, 3, COL.amber);
-
-    const coverItems = [
+    const coverRows: [string, string][] = [
       ['EMPRESA', inspecao.empresa.nome],
       ['CNPJ', inspecao.empresa.cnpj || '—'],
       ['SETOR', inspecao.setor.nome],
       ['TÉCNICO', inspecao.usuario.nome],
       ['DATA', new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')],
     ];
-    let cy = 300;
-    for (const [label, value] of coverItems) {
-      pdf.txt(label, 0, cy, { size: 7, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
+    let cy = 285;
+    for (const [label, val] of coverRows) {
+      txt(doc, label, 0, cy, { size: 7, color: C.gray400, w: W, align: 'center' });
       cy += 12;
-      pdf.txt(value, 0, cy, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
-      cy += 24;
+      txt(doc, val, 0, cy, { size: 11, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
+      cy += 22;
     }
 
-    const corNota = nota >= 70 ? COL.green : nota >= 40 ? COL.amber : COL.red;
-    pdf.addBg((PAGE_W - 80) / 2, 490, 80, 80, corNota, 40);
-    pdf.txt(`${nota}`, 0, 505, { size: 32, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
-    pdf.txt('/100', 0, 545, { size: 8, font: 'Helvetica', color: COL.white, width: PAGE_W, align: 'center' });
-    pdf.txt('NOTA DE CONFORMIDADE', 0, 580, { size: 8, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
+    const corNota = nota >= 70 ? C.green : nota >= 40 ? C.amber : C.red;
+    rect(doc, (W - 76) / 2, 480, 76, 76, corNota, 38);
+    txt(doc, `${nota}`, 0, 493, { size: 30, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
+    txt(doc, '/100', 0, 530, { size: 8, color: C.white, w: W, align: 'center' });
+    txt(doc, 'NOTA DE CONFORMIDADE', 0, 565, { size: 8, color: C.gray400, w: W, align: 'center' });
 
-    const statItems = [
-      { v: `${totalRiscos}`, l: 'Riscos', c: COL.red },
-      { v: `${epiAusentes + epiIncorretos}`, l: 'EPIs Irregulares', c: COL.amber },
-      { v: `${inspecao.midias.length}`, l: 'Fotos', c: COL.blue },
+    const stats = [
+      { v: `${totalRiscos}`, l: 'Riscos', c: C.red },
+      { v: `${epiIrreg}`, l: 'EPIs Irregulares', c: C.amber },
+      { v: `${inspecao.midias.length}`, l: 'Fotos', c: C.blue },
     ];
-    statItems.forEach((s, i) => {
-      const sx = 80 + i * 155;
-      pdf.addBg(sx, 620, 120, 50, '#1E293B', 8);
-      pdf.txt(s.v, sx, 628, { size: 20, font: 'Helvetica-Bold', color: s.c, width: 120, align: 'center' });
-      pdf.txt(s.l, sx, 654, { size: 7, font: 'Helvetica', color: COL.textLight, width: 120, align: 'center' });
+    stats.forEach((s, i) => {
+      const sx = 75 + i * 155;
+      rect(doc, sx, 610, 120, 48, '#1E293B', 8);
+      txt(doc, s.v, sx, 618, { size: 20, font: 'Helvetica-Bold', color: s.c, w: 120, align: 'center' });
+      txt(doc, s.l, sx, 640, { size: 7, color: C.gray400, w: 120, align: 'center' });
     });
 
-    // ════════════════════════════════════════════════
+    footer();
+
+    // ════════════════════════════════════════
     // RESUMO EXECUTIVO
-    // ════════════════════════════════════════════════
-    pdf.newPage();
+    // ════════════════════════════════════════
+    doc.addPage({ margin: 0 });
+    pageNum++;
+    rect(doc, 0, 0, W, H, C.white);
 
-    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 30, COL.navy, 4);
-    pdf.txt('RESUMO EXECUTIVO', MARGIN_L, pdf.y, { size: 14, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W, align: 'left' });
-    pdf.y += 30;
+    let y = 40;
+    rect(doc, ML - 4, y - 4, CW + 8, 28, C.navy, 4);
+    txt(doc, 'RESUMO EXECUTIVO', ML, y, { size: 12, font: 'Helvetica-Bold', color: C.white });
+    y += 32;
 
-    const summaryData: [string, string][] = [
+    const sumRows: [string, string][] = [
       ['Empresa', inspecao.empresa.nome],
       ['CNPJ', inspecao.empresa.cnpj || '—'],
       ['Setor', inspecao.setor.nome],
@@ -243,279 +150,298 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
       ['Nota de Conformidade', `${nota}/100`],
     ];
 
-    for (let i = 0; i < summaryData.length; i++) {
-      const [k, v] = summaryData[i];
-      const rowH = 22;
-      const bgColor = i % 2 === 0 ? '#F1F5F9' : COL.white;
-      pdf.addBg(MARGIN_L, pdf.y, CONTENT_W, rowH, bgColor);
-      pdf.txt(k, MARGIN_L + 8, pdf.y + 6, { size: 9, font: 'Helvetica', color: COL.textMid, width: 180 });
-      pdf.txt(v, MARGIN_L + 200, pdf.y + 6, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 210 });
-      pdf.y += rowH;
+    for (let i = 0; i < sumRows.length; i++) {
+      const [k, v] = sumRows[i];
+      const bg = i % 2 === 0 ? C.gray50 : C.white;
+      rect(doc, ML, y, CW, 22, bg);
+      txt(doc, k, ML + 8, y + 6, { size: 9, color: C.gray500, w: 180 });
+      txt(doc, v, ML + 200, y + 6, { size: 9, font: 'Helvetica-Bold', color: C.navy, w: CW - 210 });
+      y += 22;
     }
 
-    pdf.gap(20);
+    y += 20;
+    rect(doc, ML - 4, y - 4, CW + 8, 28, C.navy, 4);
+    txt(doc, 'MATRIZ DE RISCO', ML, y, { size: 11, font: 'Helvetica-Bold', color: C.white });
+    y += 32;
 
-    // Matriz de Risco
-    pdf.ensureSpace(180);
-    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-    pdf.txt('MATRIZ DE RISCO', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-    pdf.y += 30;
+    rect(doc, ML, y, CW, 22, C.navy);
+    txt(doc, 'GRAVIDADE', ML + 10, y + 6, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 160 });
+    txt(doc, 'QUANTIDADE', ML + 180, y + 6, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 100 });
+    txt(doc, 'PRAZO DE CORREÇÃO', ML + 290, y + 6, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 160 });
+    y += 22;
 
-    const matrixHeader = ['GRAVIDADE', 'QUANTIDADE', 'PRAZO DE CORREÇÃO'];
-    const colWidths = [180, 100, 150];
-    let mx = MARGIN_L;
-
-    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 22, COL.navy);
-    matrixHeader.forEach((h, i) => {
-      pdf.txt(h, mx + 8, pdf.y + 6, { size: 8, font: 'Helvetica-Bold', color: COL.white, width: colWidths[i] - 16 });
-      mx += colWidths[i];
-    });
-    pdf.y += 22;
-
-    const gravRows: Array<{ label: string; count: number; prazo: string; color: string }> = [
-      { label: 'Crítica', count: riscosPorGravidade.critica, prazo: '1 a 7 dias', color: COL.red },
-      { label: 'Alta', count: riscosPorGravidade.alta, prazo: 'Até 15 dias', color: COL.orange },
-      { label: 'Média', count: riscosPorGravidade.media, prazo: 'Até 30 dias', color: COL.amber },
-      { label: 'Baixa', count: riscosPorGravidade.baixa, prazo: 'Até 60 dias', color: COL.green },
+    const gravData: Array<{ label: string; count: number; prazo: string; color: string }> = [
+      { label: 'Crítica', count: riscosPorGrav.critica, prazo: '1 a 7 dias', color: C.red },
+      { label: 'Alta', count: riscosPorGrav.alta, prazo: 'Até 15 dias', color: C.orange },
+      { label: 'Média', count: riscosPorGrav.media, prazo: 'Até 30 dias', color: C.amber },
+      { label: 'Baixa', count: riscosPorGrav.baixa, prazo: 'Até 60 dias', color: C.green },
     ];
 
-    for (let i = 0; i < gravRows.length; i++) {
-      const g = gravRows[i];
-      const bg = i % 2 === 0 ? '#F8FAFC' : COL.white;
-      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 22, bg);
-
-      pdf.drawRect(MARGIN_L + 8, pdf.y + 6, 10, 10, g.color, 5);
-      pdf.txt(g.label, MARGIN_L + 26, pdf.y + 5, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: 140 });
-      pdf.txt(String(g.count), MARGIN_L + 180, pdf.y + 5, { size: 9, font: 'Helvetica-Bold', color: g.count > 0 ? COL.red : COL.textLight, width: 100 });
-      pdf.txt(g.prazo, MARGIN_L + 280, pdf.y + 5, { size: 9, font: 'Helvetica', color: COL.textMid, width: 150 });
-      pdf.y += 22;
+    for (let i = 0; i < gravData.length; i++) {
+      const g = gravData[i];
+      const bg = i % 2 === 0 ? C.gray50 : C.white;
+      rect(doc, ML, y, CW, 22, bg);
+      rect(doc, ML + 8, y + 6, 10, 10, g.color, 5);
+      txt(doc, g.label, ML + 26, y + 5, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: 140 });
+      txt(doc, String(g.count), ML + 180, y + 5, { size: 9, font: 'Helvetica-Bold', color: g.count > 0 ? C.red : C.gray300, w: 100 });
+      txt(doc, g.prazo, ML + 290, y + 5, { size: 9, color: C.gray600, w: 160 });
+      y += 22;
     }
 
     if (inspecao.observacoes) {
-      pdf.gap(16);
-      pdf.ensureSpace(60);
-      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 50, COL.amberBg);
-      pdf.drawRect(MARGIN_L, pdf.y, 4, 50, COL.amber);
-      pdf.txt('Observações do Técnico', MARGIN_L + 16, pdf.y + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 24 });
-      pdf.txt(inspecao.observacoes, MARGIN_L + 16, pdf.y + 22, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 32 });
-      pdf.y += 56;
+      y += 16;
+      rect(doc, ML, y, CW, 48, C.amberBg);
+      rect(doc, ML, y, 4, 48, C.amber);
+      txt(doc, 'Observações do Técnico', ML + 14, y + 6, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: CW - 24 });
+      txt(doc, inspecao.observacoes, ML + 14, y + 22, { size: 8, color: C.gray500, w: CW - 28 });
+      y += 56;
     }
 
-    // ════════════════════════════════════════════════
+    footer();
+
+    // ════════════════════════════════════════
     // IMAGENS ANOTADAS
-    // ════════════════════════════════════════════════
-    const imagensAnotadas = inspecao.midias
+    // ════════════════════════════════════════
+    const imgsAnotadas = inspecao.midias
       .filter(m => m.tipo === 'foto')
       .map(m => {
-        const filename = path.basename(m.url);
-        const anotadaPath = path.join(anotadasDir, `anotada_${filename}.png`);
-        return { midia: m, anotadaPath };
+        const fn = path.basename(m.url);
+        return { midia: m, path: path.join(anotadasDir, `anotada_${fn}.png`) };
       })
-      .filter(img => fs.existsSync(img.anotadaPath));
+      .filter(img => fs.existsSync(img.path));
 
-    for (const img of imagensAnotadas) {
-      pdf.newPage();
-      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-      pdf.txt('ANÁLISE VISUAL', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-      pdf.y += 30;
+    for (const img of imgsAnotadas) {
+      doc.addPage({ margin: 0 });
+      pageNum++;
+      rect(doc, 0, 0, W, H, C.white);
 
-      pdf.txt(img.midia.nome, MARGIN_L, pdf.y, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W });
-      pdf.y += 14;
+      let iy = 40;
+      rect(doc, ML - 4, iy - 4, CW + 8, 28, C.navy, 4);
+      txt(doc, 'ANÁLISE VISUAL', ML, iy, { size: 12, font: 'Helvetica-Bold', color: C.white });
+      iy += 32;
+
+      txt(doc, img.midia.nome, ML, iy, { size: 8, color: C.gray500, w: CW });
+      iy += 14;
 
       try {
-        const meta = await sharp(img.anotadaPath).metadata();
-        const imgW = meta.width || 500;
-        const imgH = meta.height || 400;
-        const maxW = CONTENT_W;
-        const maxH = MAX_Y - pdf.y - 30;
-        const scale = Math.min(maxW / imgW, maxH / imgH, 1);
-        const w = imgW * scale;
-        const h = imgH * scale;
-        const x = MARGIN_L + (maxW - w) / 2;
+        const meta = await sharp(img.path).metadata();
+        const iw = meta.width || 500;
+        const ih = meta.height || 400;
+        const maxW = CW;
+        const maxH = H - iy - 60;
+        const sc = Math.min(maxW / iw, maxH / ih, 1);
+        const w = iw * sc;
+        const h = ih * sc;
+        const ix = ML + (maxW - w) / 2;
 
-        pdf.drawRect(x - 2, pdf.y - 2, w + 4, h + 4, COL.border, 4);
+        rect(doc, ix - 2, iy - 2, w + 4, h + 4, C.gray200, 4);
         doc.save();
-        doc.image(img.anotadaPath, x, pdf.y, { width: w, height: h });
+        doc.image(img.path, ix, iy, { width: w, height: h });
         doc.restore();
-        pdf.y += h + 8;
+        iy += h + 8;
 
         const riscosImg = inspecao.riscos.filter(r => r.imagemUrl === img.midia.url);
         if (riscosImg.length > 0) {
           const boxH = 14 + Math.min(riscosImg.length, 4) * 12;
-          pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, boxH, COL.redBg, 4);
-          pdf.drawRect(MARGIN_L, pdf.y, 4, boxH, COL.red);
-          pdf.txt(`${riscosImg.length} risco(s) identificado(s):`, MARGIN_L + 14, pdf.y + 6, { size: 8, font: 'Helvetica-Bold', color: COL.red, width: CONTENT_W - 24 });
-          let ry = pdf.y + 18;
+          rect(doc, ML, iy, CW, boxH, C.redBg);
+          rect(doc, ML, iy, 4, boxH, C.red);
+          txt(doc, `${riscosImg.length} risco(s) identificado(s):`, ML + 12, iy + 6, { size: 8, font: 'Helvetica-Bold', color: C.red, w: CW - 20 });
+          let ry = iy + 18;
           for (const r of riscosImg.slice(0, 4)) {
-            pdf.txt(`• ${r.descricao} — ${r.gravidade.toUpperCase()}`, MARGIN_L + 20, ry, { size: 7, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 36 });
+            txt(doc, `• ${r.descricao} — ${r.gravidade.toUpperCase()}`, ML + 18, ry, { size: 7, color: C.gray600, w: CW - 30 });
             ry += 12;
           }
-          pdf.y += boxH + 4;
+          iy += boxH + 4;
         }
       } catch {
-        pdf.txt('Imagem não disponível', MARGIN_L, pdf.y + 10, { size: 10, color: COL.textLight });
-        pdf.y += 30;
+        txt(doc, 'Imagem não disponível', ML, iy + 10, { size: 10, color: C.gray300 });
       }
+
+      footer();
     }
 
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     // RISCOS DETALHADOS
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     if (totalRiscos > 0) {
-      pdf.newPage();
-      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-      pdf.txt('RISCOS IDENTIFICADOS', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-      pdf.y += 30;
+      doc.addPage({ margin: 0 });
+      pageNum++;
+      rect(doc, 0, 0, W, H, C.white);
+
+      let ry = 40;
+      rect(doc, ML - 4, ry - 4, CW + 8, 28, C.navy, 4);
+      txt(doc, 'RISCOS IDENTIFICADOS', ML, ry, { size: 12, font: 'Helvetica-Bold', color: C.white });
+      ry += 32;
 
       const gravCor: Record<string, string> = {
-        crítica: COL.red, critica: COL.red, alta: COL.orange,
-        média: COL.amber, media: COL.amber, baixa: COL.green,
+        crítica: C.red, critica: C.red, alta: C.orange,
+        média: C.amber, media: C.amber, baixa: C.green,
       };
 
       for (let i = 0; i < inspecao.riscos.length; i++) {
         const risco = inspecao.riscos[i];
-        const cor = gravCor[risco.gravidade] || COL.amber;
+        const cor = gravCor[risco.gravidade] || C.amber;
 
-        let cardH = 32;
+        let cardH = 36;
+        if (risco.localIdentificado) cardH += 14;
+        if (risco.categoria) cardH += 14;
         if (risco.consequencias) cardH += 14;
         if (risco.medidasPreventivas) cardH += 14;
         if (risco.medidasCorretivas) cardH += 14;
-        if (risco.localIdentificado) cardH += 14;
 
-        pdf.ensureSpace(cardH + 10);
+        if (ry + cardH > H - 60) {
+          footer();
+          doc.addPage({ margin: 0 });
+          pageNum++;
+          rect(doc, 0, 0, W, H, C.white);
+          ry = 40;
+        }
 
-        const cardY = pdf.y;
-        pdf.drawRect(MARGIN_L, cardY, CONTENT_W, cardH, COL.white);
-        pdf.drawRect(MARGIN_L, cardY, 4, cardH, cor);
+        rect(doc, ML, ry, CW, cardH, C.white);
+        rect(doc, ML, ry, 4, cardH, cor);
 
-        const numY = cardY + 8;
-        pdf.drawRect(MARGIN_L + 12, numY, 20, 20, cor, 10);
-        pdf.txt(String(i + 1), MARGIN_L + 12, numY + 4, { size: 9, font: 'Helvetica-Bold', color: COL.white, width: 20, align: 'center' });
+        rect(doc, ML + 12, ry + 8, 20, 20, cor, 10);
+        txt(doc, String(i + 1), ML + 12, ry + 12, { size: 9, font: 'Helvetica-Bold', color: C.white, w: 20, align: 'center' });
 
-        pdf.txt(risco.descricao, MARGIN_L + 40, cardY + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 50 });
+        txt(doc, risco.descricao, ML + 40, ry + 8, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: CW - 52 });
 
-        const badgeY = cardY + 22;
-        pdf.drawRect(MARGIN_L + 40, badgeY, 60, 14, cor, 3);
-        pdf.txt(risco.gravidade.toUpperCase(), MARGIN_L + 40, badgeY + 3, { size: 6, font: 'Helvetica-Bold', color: COL.white, width: 60, align: 'center' });
+        rect(doc, ML + 40, ry + 24, 60, 14, cor, 3);
+        txt(doc, risco.gravidade.toUpperCase(), ML + 40, ry + 27, { size: 6, font: 'Helvetica-Bold', color: C.white, w: 60, align: 'center' });
 
+        let bx = ML + 108;
         if (risco.nrsRelacionadas) {
-          pdf.drawRect(MARGIN_L + 108, badgeY, 45, 14, COL.blueBg, 3);
-          pdf.txt(risco.nrsRelacionadas, MARGIN_L + 108, badgeY + 3, { size: 6, font: 'Helvetica-Bold', color: COL.blue, width: 45, align: 'center' });
+          rect(doc, bx, ry + 24, 45, 14, C.blueBg, 3);
+          txt(doc, risco.nrsRelacionadas, bx, ry + 27, { size: 6, font: 'Helvetica-Bold', color: C.blue, w: 45, align: 'center' });
+          bx += 53;
         }
 
-        pdf.drawRect(MARGIN_L + 160, badgeY, 50, 14, '#F1F5F9', 3);
-        pdf.txt(`${(risco.confianca * 100).toFixed(0)}%`, MARGIN_L + 160, badgeY + 3, { size: 6, font: 'Helvetica', color: COL.textMid, width: 50, align: 'center' });
+        rect(doc, bx, ry + 24, 50, 14, C.gray100, 3);
+        txt(doc, `${(risco.confianca * 100).toFixed(0)}%`, bx, ry + 27, { size: 6, color: C.gray500, w: 50, align: 'center' });
 
-        let detailY = cardY + 40;
-        const details: Array<{ label: string; value: string; color: string }> = [];
-        if (risco.localIdentificado) details.push({ label: 'Local', value: risco.localIdentificado, color: COL.textMid });
-        if (risco.categoria) details.push({ label: 'Categoria', value: risco.categoria, color: COL.textMid });
-        if (risco.consequencias) details.push({ label: 'Consequências', value: risco.consequencias, color: COL.red });
-        if (risco.medidasPreventivas) details.push({ label: 'Prevenção', value: risco.medidasPreventivas, color: COL.green });
-        if (risco.medidasCorretivas) details.push({ label: 'Correção', value: risco.medidasCorretivas, color: COL.orange });
-
-        for (const d of details) {
-          pdf.txt(`${d.label}: ${d.value}`, MARGIN_L + 44, detailY, { size: 7, font: 'Helvetica', color: d.color, width: CONTENT_W - 56 });
-          detailY += 14;
+        let dy = ry + 42;
+        if (risco.localIdentificado) {
+          txt(doc, `Local: ${risco.localIdentificado}`, ML + 44, dy, { size: 7, color: C.gray500, w: CW - 56 });
+          dy += 14;
+        }
+        if (risco.categoria) {
+          txt(doc, `Categoria: ${risco.categoria}`, ML + 44, dy, { size: 7, color: C.gray500, w: CW - 56 });
+          dy += 14;
+        }
+        if (risco.consequencias) {
+          txt(doc, `Consequências: ${risco.consequencias}`, ML + 44, dy, { size: 7, color: C.red, w: CW - 56 });
+          dy += 14;
+        }
+        if (risco.medidasPreventivas) {
+          txt(doc, `Prevenção: ${risco.medidasPreventivas}`, ML + 44, dy, { size: 7, color: C.green, w: CW - 56 });
+          dy += 14;
+        }
+        if (risco.medidasCorretivas) {
+          txt(doc, `Correção: ${risco.medidasCorretivas}`, ML + 44, dy, { size: 7, color: C.orange, w: CW - 56 });
         }
 
-        pdf.y = cardY + cardH + 8;
+        ry += cardH + 8;
       }
+
+      footer();
     }
 
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     // EPIs
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     if (inspecao.epiViolacoes.length > 0) {
-      pdf.newPage();
-      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-      pdf.txt('ANÁLISE DE EPIs', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-      pdf.y += 30;
+      doc.addPage({ margin: 0 });
+      pageNum++;
+      rect(doc, 0, 0, W, H, C.white);
+
+      let ey = 40;
+      rect(doc, ML - 4, ey - 4, CW + 8, 28, C.navy, 4);
+      txt(doc, 'ANÁLISE DE EPIs', ML, ey, { size: 12, font: 'Helvetica-Bold', color: C.white });
+      ey += 32;
 
       for (let i = 0; i < inspecao.epiViolacoes.length; i++) {
         const epi = inspecao.epiViolacoes[i];
-        const cor = epi.status === 'ausente' ? COL.red : epi.status === 'incorreto' ? COL.orange : COL.green;
-        const bg = epi.status === 'ausente' ? COL.redBg : epi.status === 'incorreto' ? COL.orangeBg : COL.greenBg;
+        const cor = epi.status === 'ausente' ? C.red : epi.status === 'incorreto' ? C.orange : C.green;
+        const bg = epi.status === 'ausente' ? C.redBg : epi.status === 'incorreto' ? C.orangeBg : C.greenBg;
         const label = epi.status === 'ausente' ? 'AUSENTE' : epi.status === 'incorreto' ? 'INCORRETO' : 'CORRETO';
 
-        const cardH = epi.descricao ? 40 : 30;
-        pdf.ensureSpace(cardH + 6);
+        const cardH = epi.descricao ? 40 : 28;
+        rect(doc, ML, ey, CW, cardH, bg);
+        rect(doc, ML, ey, 4, cardH, cor);
 
-        const ey = pdf.y;
-        pdf.drawRect(MARGIN_L, ey, CONTENT_W, cardH, bg);
-        pdf.drawRect(MARGIN_L, ey, 4, cardH, cor);
+        rect(doc, ML + 14, ey + 6, 60, 16, cor, 3);
+        txt(doc, label, ML + 14, ey + 9, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 60, align: 'center' });
 
-        pdf.drawRect(MARGIN_L + 14, ey + 7, 60, 16, cor, 3);
-        pdf.txt(label, MARGIN_L + 14, ey + 10, { size: 7, font: 'Helvetica-Bold', color: COL.white, width: 60, align: 'center' });
-
-        pdf.txt(epi.epiNome, MARGIN_L + 84, ey + 7, { size: 10, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 160 });
-
-        pdf.txt(`${(epi.confianca * 100).toFixed(0)}%`, MARGIN_L + CONTENT_W - 50, ey + 9, { size: 8, font: 'Helvetica', color: COL.textMid, width: 40, align: 'right' });
+        txt(doc, epi.epiNome, ML + 84, ey + 7, { size: 10, font: 'Helvetica-Bold', color: C.gray700, w: CW - 160 });
+        txt(doc, `${(epi.confianca * 100).toFixed(0)}%`, ML + CW - 50, ey + 9, { size: 8, color: C.gray500, w: 40, align: 'right' });
 
         if (epi.descricao) {
-          pdf.txt(epi.descricao, MARGIN_L + 84, ey + 22, { size: 7, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 100 });
+          txt(doc, epi.descricao, ML + 84, ey + 22, { size: 7, color: C.gray500, w: CW - 100 });
         }
 
-        pdf.y = ey + cardH + 6;
+        ey += cardH + 6;
       }
+
+      footer();
     }
 
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     // CHECKLIST
-    // ════════════════════════════════════════════════
-    const checklistRespostas = await (prisma as any).checklistResposta.findMany({
+    // ════════════════════════════════════════
+    const clRespostas = await (prisma as any).checklistResposta.findMany({
       where: { inspecaoId: inspecao.id },
       include: { item: true },
     });
 
-    if (checklistRespostas.length > 0) {
-      pdf.newPage();
-      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-      pdf.txt('CHECKLIST DE CONFORMIDADE', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-      pdf.y += 30;
+    if (clRespostas.length > 0) {
+      doc.addPage({ margin: 0 });
+      pageNum++;
+      rect(doc, 0, 0, W, H, C.white);
 
-      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 20, COL.navy);
-      const clCols = [250, 80, 80];
-      const clHeaders = ['ITEM', 'STATUS', 'OBSERVAÇÃO'];
-      let cx = MARGIN_L + 8;
-      clHeaders.forEach((h, i) => {
-        pdf.txt(h, cx, pdf.y + 5, { size: 7, font: 'Helvetica-Bold', color: COL.white, width: clCols[i] });
-        cx += clCols[i];
-      });
-      pdf.y += 20;
+      let cly = 40;
+      rect(doc, ML - 4, cly - 4, CW + 8, 28, C.navy, 4);
+      txt(doc, 'CHECKLIST DE CONFORMIDADE', ML, cly, { size: 12, font: 'Helvetica-Bold', color: C.white });
+      cly += 32;
 
-      for (let i = 0; i < checklistRespostas.length; i++) {
-        const cr = checklistRespostas[i];
-        const bg = i % 2 === 0 ? '#F8FAFC' : COL.white;
-        const statusCor = cr.resposta === 'conforme' ? COL.green : cr.resposta === 'nao_conforme' ? COL.red : COL.amber;
-        const statusLabel = cr.resposta === 'conforme' ? 'Conforme' : cr.resposta === 'nao_conforme' ? 'Não Conforme' : 'N/A';
+      rect(doc, ML, cly, CW, 20, C.navy);
+      txt(doc, 'ITEM', ML + 10, cly + 5, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 240 });
+      txt(doc, 'STATUS', ML + 260, cly + 5, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 100 });
+      txt(doc, 'OBSERVAÇÃO', ML + 370, cly + 5, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 140 });
+      cly += 20;
 
-        pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 20, bg);
-        pdf.drawRect(MARGIN_L, pdf.y, 3, 20, statusCor);
+      for (let i = 0; i < clRespostas.length; i++) {
+        const cr = clRespostas[i];
+        const bg = i % 2 === 0 ? C.gray50 : C.white;
+        const sCor = cr.resposta === 'conforme' ? C.green : cr.resposta === 'nao_conforme' ? C.red : C.amber;
+        const sLabel = cr.resposta === 'conforme' ? 'Conforme' : cr.resposta === 'nao_conforme' ? 'Não Conforme' : 'N/A';
 
-        let ccx = MARGIN_L + 12;
-        pdf.txt(cr.item?.texto || cr.itemId, ccx, pdf.y + 5, { size: 7, font: 'Helvetica', color: COL.textDark, width: clCols[0] - 12 });
-        ccx += clCols[0];
-        pdf.drawRect(ccx, pdf.y + 4, 70, 12, statusCor, 3);
-        pdf.txt(statusLabel, ccx, pdf.y + 5, { size: 6, font: 'Helvetica-Bold', color: COL.white, width: 70, align: 'center' });
-        ccx += clCols[1];
-        pdf.txt(cr.observacao || '—', ccx, pdf.y + 5, { size: 7, font: 'Helvetica', color: COL.textMid, width: clCols[2] });
-        pdf.y += 20;
+        rect(doc, ML, cly, CW, 18, bg);
+        rect(doc, ML, cly, 3, 18, sCor);
+        txt(doc, cr.item?.texto || cr.itemId, ML + 10, cly + 4, { size: 7, color: C.gray700, w: 240 });
+        rect(doc, ML + 260, cly + 3, 70, 12, sCor, 3);
+        txt(doc, sLabel, ML + 260, cly + 4, { size: 6, font: 'Helvetica-Bold', color: C.white, w: 70, align: 'center' });
+        txt(doc, cr.observacao || '—', ML + 370, cly + 4, { size: 7, color: C.gray500, w: 140 });
+        cly += 18;
       }
+
+      footer();
     }
 
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     // FOTOS ORIGINAIS
-    // ════════════════════════════════════════════════
+    // ════════════════════════════════════════
     const fotos = inspecao.midias.filter(m => m.tipo === 'foto');
     if (fotos.length > 0) {
-      pdf.newPage();
-      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-      pdf.txt('EVIDÊNCIAS FOTOGRÁFICAS', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-      pdf.y += 30;
+      doc.addPage({ margin: 0 });
+      pageNum++;
+      rect(doc, 0, 0, W, H, C.white);
+
+      let fy = 40;
+      rect(doc, ML - 4, fy - 4, CW + 8, 28, C.navy, 4);
+      txt(doc, 'EVIDÊNCIAS FOTOGRÁFICAS', ML, fy, { size: 12, font: 'Helvetica-Bold', color: C.white });
+      fy += 32;
 
       let col = 0;
-      const colW = (CONTENT_W - 12) / 2;
+      const colW = (CW - 12) / 2;
       let rowMaxH = 0;
 
       for (const foto of fotos) {
@@ -524,83 +450,75 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
 
         try {
           const meta = await sharp(imgPath).metadata();
-          const imgW = meta.width || 300;
-          const imgH = meta.height || 200;
-          const scale = Math.min(colW / imgW, 200 / imgH);
-          const w = imgW * scale;
-          const h = imgH * scale;
+          const iw = meta.width || 300;
+          const ih = meta.height || 200;
+          const sc = Math.min(colW / iw, 200 / ih);
+          const w = iw * sc;
+          const h = ih * sc;
 
-          const totalH = h + 18;
-          if (col === 0) {
-            pdf.ensureSpace(totalH + 10);
-          } else {
-            if (pdf.y + totalH > MAX_Y) {
-              pdf.y += rowMaxH + 8;
-              col = 0;
-              rowMaxH = 0;
-              pdf.ensureSpace(totalH + 10);
-            }
+          if (col === 0 && fy + h + 20 > H - 50) {
+            footer();
+            doc.addPage({ margin: 0 });
+            pageNum++;
+            rect(doc, 0, 0, W, H, C.white);
+            fy = 40;
           }
 
-          const fx = col === 0 ? MARGIN_L : MARGIN_L + colW + 12;
-          const fy = pdf.y;
+          const fx = col === 0 ? ML : ML + colW + 12;
 
-          pdf.drawRect(fx - 2, fy - 2, w + 4, h + 4, COL.border, 4);
+          rect(doc, fx - 2, fy - 2, w + 4, h + 4, C.gray200, 4);
           doc.save();
           doc.image(imgPath, fx, fy, { width: w, height: h });
           doc.restore();
-          pdf.txt(foto.nome, fx, fy + h + 4, { size: 7, font: 'Helvetica', color: COL.textMid, width: w });
+          txt(doc, foto.nome, fx, fy + h + 4, { size: 7, color: C.gray500, w });
 
-          rowMaxH = Math.max(rowMaxH, totalH);
+          rowMaxH = Math.max(rowMaxH, h + 18);
           col = col === 0 ? 1 : 0;
-          if (col === 0) {
-            pdf.y += rowMaxH + 8;
-            rowMaxH = 0;
-          }
-        } catch {
-          // skip
-        }
+          if (col === 0) { fy += rowMaxH + 8; rowMaxH = 0; }
+        } catch { /* skip */ }
       }
-      if (col === 1) {
-        pdf.y += rowMaxH + 8;
-      }
+      if (col === 1) fy += rowMaxH + 8;
+
+      footer();
     }
 
-    // ════════════════════════════════════════════════
-    // CONCLUSÃO / ASSINATURA
-    // ════════════════════════════════════════════════
-    pdf.newPage();
-    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
-    pdf.txt('CONCLUSÃO', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
-    pdf.y += 30;
+    // ════════════════════════════════════════
+    // CONCLUSÃO
+    // ════════════════════════════════════════
+    doc.addPage({ margin: 0 });
+    pageNum++;
+    rect(doc, 0, 0, W, H, C.white);
 
-    const conclH = 90;
-    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, conclH, '#F8FAFC', 6);
-    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 1, COL.border);
+    let sy = 40;
+    rect(doc, ML - 4, sy - 4, CW + 8, 28, C.navy, 4);
+    txt(doc, 'CONCLUSÃO', ML, sy, { size: 12, font: 'Helvetica-Bold', color: C.white });
+    sy += 36;
 
-    pdf.txt('Técnico Responsável', MARGIN_L + 16, pdf.y + 12, { size: 10, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 32 });
-    pdf.txt(`Nome: ${inspecao.usuario.nome}`, MARGIN_L + 16, pdf.y + 30, { size: 8, font: 'Helvetica', color: COL.textMid, width: 220 });
-    pdf.txt(`E-mail: ${inspecao.usuario.email}`, MARGIN_L + 16, pdf.y + 44, { size: 8, font: 'Helvetica', color: COL.textMid, width: 220 });
-    pdf.txt(`Data da Inspeção: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`, MARGIN_L + 260, pdf.y + 30, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
-    pdf.txt(`Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, MARGIN_L + 260, pdf.y + 44, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
-    pdf.y += conclH;
+    rect(doc, ML, sy, CW, 72, C.gray50);
+    rect(doc, ML, sy, CW, 1, C.gray200);
+    txt(doc, 'Técnico Responsável', ML + 16, sy + 10, { size: 10, font: 'Helvetica-Bold', color: C.gray700, w: CW - 32 });
+    txt(doc, `Nome: ${inspecao.usuario.nome}`, ML + 16, sy + 28, { size: 8, color: C.gray500, w: 220 });
+    txt(doc, `E-mail: ${inspecao.usuario.email}`, ML + 16, sy + 42, { size: 8, color: C.gray500, w: 220 });
+    txt(doc, `Data da Inspeção: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`, ML + 260, sy + 28, { size: 8, color: C.gray500, w: 200 });
+    txt(doc, `Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, ML + 260, sy + 42, { size: 8, color: C.gray500, w: 200 });
+    sy += 80;
 
     if (inspecao.observacoes) {
-      pdf.gap(16);
-      const obsH = 50;
-      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, obsH, COL.amberBg, 4);
-      pdf.drawRect(MARGIN_L, pdf.y, 4, obsH, COL.amber);
-      pdf.txt('Observações', MARGIN_L + 16, pdf.y + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 32 });
-      pdf.txt(inspecao.observacoes, MARGIN_L + 16, pdf.y + 24, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 36 });
-      pdf.y += obsH + 8;
+      rect(doc, ML, sy, CW, 48, C.amberBg);
+      rect(doc, ML, sy, 4, 48, C.amber);
+      txt(doc, 'Observações', ML + 14, sy + 6, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: CW - 24 });
+      txt(doc, inspecao.observacoes, ML + 14, sy + 22, { size: 8, color: C.gray500, w: CW - 28 });
+      sy += 56;
     }
 
-    pdf.gap(30);
-    pdf.drawRect(MARGIN_L, pdf.y, 200, 1, COL.border);
-    pdf.txt(inspecao.usuario.nome, MARGIN_L, pdf.y + 8, { size: 8, font: 'Helvetica-Bold', color: COL.textDark, width: 200 });
-    pdf.txt(new Date().toLocaleDateString('pt-BR'), MARGIN_L, pdf.y + 22, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
+    sy += 40;
+    rect(doc, ML, sy, 200, 1, C.gray300);
+    txt(doc, inspecao.usuario.nome, ML, sy + 8, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: 200 });
+    txt(doc, new Date().toLocaleDateString('pt-BR'), ML, sy + 22, { size: 8, color: C.gray500, w: 200 });
 
-    pdf.finalize();
+    footer();
+
+    doc.end();
   } catch (err: any) {
     console.error('Erro ao gerar relatório:', err);
     res.status(500).json({ error: err.message || 'Erro ao gerar relatório' });
