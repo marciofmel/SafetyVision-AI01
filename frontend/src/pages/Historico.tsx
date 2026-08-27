@@ -169,14 +169,28 @@ export default function Historico() {
                       >
                         <FiEye size={16} />
                       </Link>
-                      <a
-                        href={`/api/relatorio/${insp.id}/relatorio`}
-                        target="_blank"
+                      <button
+                        onClick={async () => {
+                          const token = localStorage.getItem('sv_token');
+                          const res = await fetch(`/api/relatorio/${insp.id}/relatorio`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                          if (!res.ok) return alert('Erro ao baixar PDF');
+                          const blob = await res.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `relatorio-${insp.id.slice(0, 8)}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          a.remove();
+                        }}
                         className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-600 transition-all hover:bg-amber-100"
                         title="Baixar PDF"
                       >
                         <FiDownload size={16} />
-                      </a>
+                      </button>
                     </>
                   )}
                 </div>
