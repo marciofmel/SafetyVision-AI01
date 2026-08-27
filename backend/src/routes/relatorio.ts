@@ -7,65 +7,134 @@ import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
-
 const uploadsDir = path.join(__dirname, '../../uploads');
 const anotadasDir = path.join(__dirname, '../../uploads/anotadas');
 
-const C = {
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
+const MARGIN_L = 50;
+const MARGIN_R = 50;
+const MARGIN_T = 50;
+const MARGIN_B = 50;
+const CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R;
+const MAX_Y = PAGE_H - MARGIN_B;
+
+const COL = {
   navy: '#0F172A',
-  navyLight: '#1E293B',
-  navyCard: '#162032',
   amber: '#F59E0B',
-  amberLight: '#FEF3C7',
   white: '#FFFFFF',
-  gray50: '#F8FAFC',
-  gray100: '#F1F5F9',
-  gray200: '#E2E8F0',
-  gray300: '#CBD5E1',
-  gray400: '#94A3B8',
-  gray500: '#64748B',
-  gray600: '#475569',
-  gray700: '#334155',
+  bg: '#F8FAFC',
+  border: '#E2E8F0',
+  textDark: '#1E293B',
+  textMid: '#475569',
+  textLight: '#94A3B8',
   red: '#DC2626',
-  redLight: '#FEE2E2',
   redBg: '#FEF2F2',
   orange: '#EA580C',
-  orangeLight: '#FFF7ED',
+  orangeBg: '#FFF7ED',
   green: '#16A34A',
-  greenLight: '#DCFCE7',
   greenBg: '#F0FDF4',
   blue: '#2563EB',
-  blueLight: '#DBEAFE',
+  blueBg: '#EFF6FF',
+  amberBg: '#FFFBEB',
 };
 
-const PAGE_W = 595;
-const PAGE_H = 842;
-const MARGIN = 50;
-const CONTENT_W = PAGE_W - MARGIN * 2;
-const BOTTOM = PAGE_H - 40;
+class PDF {
+  doc: PDFKit.PDFDocument;
+  y = 0;
+  pageNum = 0;
+  backgrounds: Array<{ x: number; y: number; w: number; h: number; color: string; radius?: number }> = [];
 
-function footer(doc: PDFKit.PDFDocument, page: number) {
-  doc.rect(0, PAGE_H - 32, PAGE_W, 32).fill(C.navy);
-  doc.fontSize(7).font('Helvetica').fillColor(C.gray400)
-    .text('SafetyVision AI', MARGIN, PAGE_H - 22, { width: 200 });
-  doc.fillColor(C.amber)
-    .text(`${page}`, MARGIN, PAGE_H - 22, { align: 'right', width: CONTENT_W });
-}
-
-function sectionTitle(doc: PDFKit.PDFDocument, title: string, y: number) {
-  doc.fontSize(18).font('Helvetica-Bold').fillColor(C.navy).text(title, MARGIN, y);
-  doc.moveTo(MARGIN, y + 24).lineTo(PAGE_W - MARGIN, y + 24).strokeColor(C.amber).lineWidth(2).stroke();
-  return y + 36;
-}
-
-function checkPage(doc: PDFKit.PDFDocument, y: number, needed: number, pageRef: { value: number }): number {
-  if (y + needed > BOTTOM) {
-    footer(doc, pageRef.value);
-    doc.addPage({ margin: MARGIN });
-    pageRef.value++;
-    return 50;
+  constructor() {
+    this.doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false, bufferPages: true });
   }
-  return y;
+
+  newPage(hasBg = true) {
+    if (this.pageNum > 0) {
+      this.drawBackgrounds();
+      this.drawFooter();
+    }
+    this.doc.addPage({ margin: 0 });
+    this.pageNum++;
+    this.y = MARGIN_T;
+    this.backgrounds = [];
+    if (hasBg) {
+      this.backgrounds.push({ x: 0, y: 0, w: PAGE_W, h: PAGE_H, color: COL.white });
+    }
+  }
+
+  addBg(x: number, y: number, w: number, h: number, color: string, radius?: number) {
+    this.backgrounds.push({ x, y, w, h, color, radius });
+  }
+
+  drawBackgrounds() {
+    for (const bg of this.backgrounds) {
+      this.doc.save();
+      if (bg.radius) {
+        this.doc.roundedRect(bg.x, bg.y, bg.w, bg.h, bg.radius).fill(bg.color);
+      } else {
+        this.doc.rect(bg.x, bg.y, bg.w, bg.h).fill(bg.color);
+      }
+      this.doc.restore();
+    }
+  }
+
+  drawFooter() {
+    this.doc.save();
+    this.doc.rect(0, PAGE_H - 28, PAGE_W, 28).fill(COL.navy);
+    this.doc.fontSize(7).font('Helvetica').fillColor(COL.textLight);
+    this.doc.text('SafetyVision AI  |  Relatório de Inspeção', MARGIN_L, PAGE_H - 20, { width: 300 });
+    this.doc.fillColor(COL.amber);
+    this.doc.text(`Página ${this.pageNum}`, PAGE_W - MARGIN_R - 80, PAGE_H - 20, { width: 80, align: 'right' });
+    this.doc.restore();
+  }
+
+  checkPage(needed: number) {
+    if (this.y + needed > MAX_Y) {
+      this.newPage();
+    }
+  }
+
+  drawRect(x: number, y: number, w: number, h: number, color: string, radius?: number) {
+    this.doc.save();
+    if (radius) {
+      this.doc.roundedRect(x, y, w, h, radius).fill(color);
+    } else {
+      this.doc.rect(x, y, w, h).fill(color);
+    }
+    this.doc.restore();
+  }
+
+  drawBorderRect(x: number, y: number, w: number, h: number, fillColor: string, strokeColor: string, radius?: number) {
+    this.doc.save();
+    if (radius) {
+      this.doc.roundedRect(x, y, w, h, radius).fillAndStroke(fillColor, strokeColor);
+    } else {
+      this.doc.rect(x, y, w, h).fillAndStroke(fillColor, strokeColor);
+    }
+    this.doc.restore();
+  }
+
+  txt(str: string, x: number, y: number, opts: { size?: number; font?: string; color?: string; width?: number; align?: string } = {}) {
+    this.doc.save();
+    this.doc.fontSize(opts.size ?? 10).font(opts.font ?? 'Helvetica').fillColor(opts.color ?? COL.textDark);
+    this.doc.text(str, x, y, { width: opts.width ?? CONTENT_W, align: (opts.align as any) ?? 'left', lineGap: 0 });
+    this.doc.restore();
+  }
+
+  gap(h: number) {
+    this.y += h;
+  }
+
+  ensureSpace(needed: number) {
+    this.checkPage(needed);
+  }
+
+  finalize() {
+    this.drawBackgrounds();
+    this.drawFooter();
+    this.doc.end();
+  }
 }
 
 router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
@@ -84,7 +153,9 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
     });
     if (!inspecao) return res.status(404).json({ error: 'Inspeção não encontrada' });
 
-    const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false, bufferPages: true });
+    const pdf = new PDF();
+    const { doc } = pdf;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=relatorio-${inspecao.id.slice(0, 8)}.pdf`);
     doc.pipe(res);
@@ -92,141 +163,147 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
     const nota = inspecao.notaConformidade ?? 0;
     const totalRiscos = inspecao.riscos.length;
     const epiAusentes = inspecao.epiViolacoes.filter(e => e.status === 'ausente').length;
-    const page = { value: 0 };
+    const epiIncorretos = inspecao.epiViolacoes.filter(e => e.status === 'incorreto').length;
+    const riscosPorGravidade = {
+      critica: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'critica').length,
+      alta: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'alta').length,
+      media: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'media').length,
+      baixa: inspecao.riscos.filter(r => r.gravidade.toLowerCase() === 'baixa').length,
+    };
 
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     // CAPA
-    // ═══════════════════════════════════════════════════
-    page.value++;
-    doc.addPage({ margin: 0 });
-    doc.rect(0, 0, PAGE_W, PAGE_H).fill(C.navy);
-    doc.rect(0, 0, PAGE_W, 5).fill(C.amber);
+    // ════════════════════════════════════════════════
+    pdf.newPage(false);
+    pdf.backgrounds = [];
+    pdf.addBg(0, 0, PAGE_W, PAGE_H, COL.navy);
+    pdf.addBg(0, 0, PAGE_W, 6, COL.amber);
 
-    // Ícone
-    doc.roundedRect(247, 90, 100, 100, 18).fill(C.navyCard);
-    doc.roundedRect(252, 95, 90, 90, 14).fill(C.amber);
-    doc.fontSize(38).font('Helvetica-Bold').fillColor(C.navy).text('SV', 252, 118, { width: 90, align: 'center' });
+    const logoX = (PAGE_W - 90) / 2;
+    pdf.addBg(logoX, 80, 90, 90, COL.amber, 16);
+    pdf.addBg(logoX + 5, 85, 80, 80, COL.navy, 12);
 
-    // Título
-    doc.fontSize(30).font('Helvetica-Bold').fillColor(C.white).text('SAFETYVISION AI', 0, 220, { align: 'center' });
-    doc.fontSize(13).font('Helvetica').fillColor(C.gray400).text('Relatório de Inspeção de Segurança', 0, 258, { align: 'center' });
+    pdf.txt('SV', 0, 105, { size: 36, font: 'Helvetica-Bold', color: COL.amber, width: PAGE_W, align: 'center' });
 
-    doc.moveTo(210, 290).lineTo(385, 290).strokeColor(C.amber).lineWidth(2).stroke();
+    pdf.txt('SAFETYVISION AI', 0, 200, { size: 28, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
+    pdf.txt('Relatório de Inspeção de Segurança do Trabalho', 0, 240, { size: 12, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
 
-    // Dados centralizados
-    const coverData = [
-      ['Empresa', inspecao.empresa.nome],
-      ['CNPJ', inspecao.empresa.cnpj || '---'],
-      ['Setor', inspecao.setor.nome],
-      ['Técnico', inspecao.usuario.nome],
-      ['Data', new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')],
+    pdf.addBg(210, 270, 175, 3, COL.amber);
+
+    const coverItems = [
+      ['EMPRESA', inspecao.empresa.nome],
+      ['CNPJ', inspecao.empresa.cnpj || '—'],
+      ['SETOR', inspecao.setor.nome],
+      ['TÉCNICO', inspecao.usuario.nome],
+      ['DATA', new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')],
     ];
-    let cy = 315;
-    for (const [label, value] of coverData) {
-      doc.fontSize(8).font('Helvetica').fillColor(C.gray400).text(label.toUpperCase(), 0, cy, { align: 'center', width: PAGE_W });
+    let cy = 300;
+    for (const [label, value] of coverItems) {
+      pdf.txt(label, 0, cy, { size: 7, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
       cy += 12;
-      doc.fontSize(12).font('Helvetica-Bold').fillColor(C.white).text(value, 0, cy, { align: 'center', width: PAGE_W });
-      cy += 20;
+      pdf.txt(value, 0, cy, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
+      cy += 24;
     }
 
-    // Nota circular
-    const corNota = nota >= 70 ? C.green : nota >= 40 ? C.amber : C.red;
-    doc.circle(297, 530, 50).fill(corNota);
-    doc.fontSize(34).font('Helvetica-Bold').fillColor(C.white).text(`${nota}`, 262, 514, { align: 'center', width: 70 });
-    doc.fontSize(9).fillColor(C.white).text('/100', 262, 548, { align: 'center', width: 70 });
-    doc.fontSize(9).font('Helvetica').fillColor(C.gray400).text('NOTA DE CONFORMIDADE', 0, 590, { align: 'center', width: PAGE_W });
+    const corNota = nota >= 70 ? COL.green : nota >= 40 ? COL.amber : COL.red;
+    pdf.addBg((PAGE_W - 80) / 2, 490, 80, 80, corNota, 40);
+    pdf.txt(`${nota}`, 0, 505, { size: 32, font: 'Helvetica-Bold', color: COL.white, width: PAGE_W, align: 'center' });
+    pdf.txt('/100', 0, 545, { size: 8, font: 'Helvetica', color: COL.white, width: PAGE_W, align: 'center' });
+    pdf.txt('NOTA DE CONFORMIDADE', 0, 580, { size: 8, font: 'Helvetica', color: COL.textLight, width: PAGE_W, align: 'center' });
 
-    // Stats
-    const stats = [
-      { v: `${totalRiscos}`, l: 'Riscos', c: C.red },
-      { v: `${epiAusentes}`, l: 'EPIs Ausentes', c: C.amber },
-      { v: `${inspecao.midias.length}`, l: 'Fotos', c: C.blue },
+    const statItems = [
+      { v: `${totalRiscos}`, l: 'Riscos', c: COL.red },
+      { v: `${epiAusentes + epiIncorretos}`, l: 'EPIs Irregulares', c: COL.amber },
+      { v: `${inspecao.midias.length}`, l: 'Fotos', c: COL.blue },
     ];
-    stats.forEach((s, i) => {
-      const sx = 110 + i * 145;
-      doc.roundedRect(sx, 620, 110, 48, 8).fill(C.navyCard);
-      doc.fontSize(18).font('Helvetica-Bold').fillColor(s.c).text(s.v, sx, 628, { width: 110, align: 'center' });
-      doc.fontSize(7).font('Helvetica').fillColor(C.gray400).text(s.l, sx, 650, { width: 110, align: 'center' });
+    statItems.forEach((s, i) => {
+      const sx = 80 + i * 155;
+      pdf.addBg(sx, 620, 120, 50, '#1E293B', 8);
+      pdf.txt(s.v, sx, 628, { size: 20, font: 'Helvetica-Bold', color: s.c, width: 120, align: 'center' });
+      pdf.txt(s.l, sx, 654, { size: 7, font: 'Helvetica', color: COL.textLight, width: 120, align: 'center' });
     });
 
-    footer(doc, page.value);
-
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     // RESUMO EXECUTIVO
-    // ═══════════════════════════════════════════════════
-    page.value++;
-    doc.addPage({ margin: MARGIN });
-    let y = sectionTitle(doc, 'Resumo Executivo', 40);
+    // ════════════════════════════════════════════════
+    pdf.newPage();
 
-    const rows: [string, string][] = [
+    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 30, COL.navy, 4);
+    pdf.txt('RESUMO EXECUTIVO', MARGIN_L, pdf.y, { size: 14, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W, align: 'left' });
+    pdf.y += 30;
+
+    const summaryData: [string, string][] = [
       ['Empresa', inspecao.empresa.nome],
+      ['CNPJ', inspecao.empresa.cnpj || '—'],
       ['Setor', inspecao.setor.nome],
-      ['Técnico Responsável', inspecao.usuario.nome],
+      ['Técnico', inspecao.usuario.nome],
       ['Data da Inspeção', new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')],
-      ['Riscos Identificados', String(totalRiscos)],
-      ['EPIs em Desacordo', String(inspecao.epiViolacoes.filter(e => e.status !== 'correto').length)],
-      ['Nota de Conformidade', `${nota}/100`],
       ['Status', inspecao.status === 'concluida' ? 'Concluída' : 'Em Andamento'],
+      ['Riscos Identificados', String(totalRiscos)],
+      ['Nota de Conformidade', `${nota}/100`],
     ];
 
-    for (let i = 0; i < rows.length; i++) {
-      const [k, v] = rows[i];
-      const bg = i % 2 === 0 ? C.gray50 : C.white;
-      doc.rect(MARGIN, y, CONTENT_W, 24).fill(bg);
-      doc.fontSize(10).font('Helvetica').fillColor(C.gray500).text(k, MARGIN + 12, y + 7, { width: 200 });
-      doc.font('Helvetica-Bold').fillColor(C.navy).text(v, MARGIN + 220, y + 7, { width: CONTENT_W - 232 });
-      y += 24;
+    for (let i = 0; i < summaryData.length; i++) {
+      const [k, v] = summaryData[i];
+      const rowH = 22;
+      const bgColor = i % 2 === 0 ? '#F1F5F9' : COL.white;
+      pdf.addBg(MARGIN_L, pdf.y, CONTENT_W, rowH, bgColor);
+      pdf.txt(k, MARGIN_L + 8, pdf.y + 6, { size: 9, font: 'Helvetica', color: COL.textMid, width: 180 });
+      pdf.txt(v, MARGIN_L + 200, pdf.y + 6, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 210 });
+      pdf.y += rowH;
     }
 
-    // Matriz de risco
-    y += 16;
-    y = checkPage(doc, y, 160, page);
-    doc.fontSize(13).font('Helvetica-Bold').fillColor(C.navy).text('Matriz de Risco', MARGIN, y);
-    y += 20;
+    pdf.gap(20);
 
-    const gravidades: Array<{ key: string; label: string; color: string }> = [
-      { key: 'critica', label: 'Crítica', color: C.red },
-      { key: 'alta', label: 'Alta', color: C.orange },
-      { key: 'media', label: 'Média', color: C.amber },
-      { key: 'baixa', label: 'Baixa', color: C.green },
+    // Matriz de Risco
+    pdf.ensureSpace(180);
+    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+    pdf.txt('MATRIZ DE RISCO', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+    pdf.y += 30;
+
+    const matrixHeader = ['GRAVIDADE', 'QUANTIDADE', 'PRAZO DE CORREÇÃO'];
+    const colWidths = [180, 100, 150];
+    let mx = MARGIN_L;
+
+    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 22, COL.navy);
+    matrixHeader.forEach((h, i) => {
+      pdf.txt(h, mx + 8, pdf.y + 6, { size: 8, font: 'Helvetica-Bold', color: COL.white, width: colWidths[i] - 16 });
+      mx += colWidths[i];
+    });
+    pdf.y += 22;
+
+    const gravRows: Array<{ label: string; count: number; prazo: string; color: string }> = [
+      { label: 'Crítica', count: riscosPorGravidade.critica, prazo: '1 a 7 dias', color: COL.red },
+      { label: 'Alta', count: riscosPorGravidade.alta, prazo: 'Até 15 dias', color: COL.orange },
+      { label: 'Média', count: riscosPorGravidade.media, prazo: 'Até 30 dias', color: COL.amber },
+      { label: 'Baixa', count: riscosPorGravidade.baixa, prazo: 'Até 60 dias', color: COL.green },
     ];
-    const prazos: Record<string, string> = { critica: '1 a 7 dias', alta: '15 dias', media: '30 dias', baixa: '60 dias' };
 
-    // Header
-    doc.rect(MARGIN, y, CONTENT_W, 24).fill(C.navy);
-    doc.fontSize(8).font('Helvetica-Bold').fillColor(C.white);
-    doc.text('GRAVIDADE', MARGIN + 10, y + 8, { width: 150 });
-    doc.text('QUANTIDADE', MARGIN + 170, y + 8, { width: 140 });
-    doc.text('PRAZO', MARGIN + 330, y + 8, { width: 140 });
-    y += 24;
+    for (let i = 0; i < gravRows.length; i++) {
+      const g = gravRows[i];
+      const bg = i % 2 === 0 ? '#F8FAFC' : COL.white;
+      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 22, bg);
 
-    for (let i = 0; i < gravidades.length; i++) {
-      const g = gravidades[i];
-      const count = inspecao.riscos.filter(r => r.gravidade.toLowerCase() === g.key).length;
-      const bg = i % 2 === 0 ? C.gray50 : C.white;
-      doc.rect(MARGIN, y, CONTENT_W, 22).fill(bg);
-      doc.circle(MARGIN + 16, y + 11, 5).fill(g.color);
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(C.navy).text(g.label, MARGIN + 28, y + 6, { width: 130 });
-      doc.font('Helvetica').fillColor(count > 0 ? C.red : C.gray400).text(`${count}`, MARGIN + 170, y + 6, { width: 140 });
-      doc.fillColor(C.gray600).text(prazos[g.key], MARGIN + 330, y + 6, { width: 140 });
-      y += 22;
+      pdf.drawRect(MARGIN_L + 8, pdf.y + 6, 10, 10, g.color, 5);
+      pdf.txt(g.label, MARGIN_L + 26, pdf.y + 5, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: 140 });
+      pdf.txt(String(g.count), MARGIN_L + 180, pdf.y + 5, { size: 9, font: 'Helvetica-Bold', color: g.count > 0 ? COL.red : COL.textLight, width: 100 });
+      pdf.txt(g.prazo, MARGIN_L + 280, pdf.y + 5, { size: 9, font: 'Helvetica', color: COL.textMid, width: 150 });
+      pdf.y += 22;
     }
 
-    // Observações
     if (inspecao.observacoes) {
-      y += 14;
-      y = checkPage(doc, y, 70, page);
-      doc.roundedRect(MARGIN, y, CONTENT_W, 56, 6).fill(C.amberLight);
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(C.navy).text('Observações do Técnico', MARGIN + 12, y + 8);
-      doc.fontSize(8).font('Helvetica').fillColor(C.gray700).text(inspecao.observacoes, MARGIN + 12, y + 22, { width: CONTENT_W - 24, height: 28 });
-      y += 56;
+      pdf.gap(16);
+      pdf.ensureSpace(60);
+      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 50, COL.amberBg);
+      pdf.drawRect(MARGIN_L, pdf.y, 4, 50, COL.amber);
+      pdf.txt('Observações do Técnico', MARGIN_L + 16, pdf.y + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 24 });
+      pdf.txt(inspecao.observacoes, MARGIN_L + 16, pdf.y + 22, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 32 });
+      pdf.y += 56;
     }
 
-    footer(doc, page.value);
-
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     // IMAGENS ANOTADAS
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     const imagensAnotadas = inspecao.midias
       .filter(m => m.tipo === 'foto')
       .map(m => {
@@ -237,160 +314,209 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
       .filter(img => fs.existsSync(img.anotadaPath));
 
     for (const img of imagensAnotadas) {
-      page.value++;
-      doc.addPage({ margin: MARGIN });
-      let iy = sectionTitle(doc, 'Análise Visual', 40);
+      pdf.newPage();
+      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+      pdf.txt('ANÁLISE VISUAL', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+      pdf.y += 30;
 
-      doc.fontSize(9).font('Helvetica').fillColor(C.gray500).text(img.midia.nome, MARGIN, iy);
-      iy += 16;
+      pdf.txt(img.midia.nome, MARGIN_L, pdf.y, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W });
+      pdf.y += 14;
 
       try {
         const meta = await sharp(img.anotadaPath).metadata();
         const imgW = meta.width || 500;
         const imgH = meta.height || 400;
         const maxW = CONTENT_W;
-        const maxH = BOTTOM - iy - 20;
-        const scale = Math.min(maxW / imgW, maxH / imgH);
+        const maxH = MAX_Y - pdf.y - 30;
+        const scale = Math.min(maxW / imgW, maxH / imgH, 1);
         const w = imgW * scale;
         const h = imgH * scale;
-        const x = MARGIN + (maxW - w) / 2;
+        const x = MARGIN_L + (maxW - w) / 2;
 
-        doc.roundedRect(x - 2, iy - 2, w + 4, h + 4, 4).fill(C.gray200);
-        doc.image(img.anotadaPath, x, iy, { width: w, height: h });
+        pdf.drawRect(x - 2, pdf.y - 2, w + 4, h + 4, COL.border, 4);
+        doc.save();
+        doc.image(img.anotadaPath, x, pdf.y, { width: w, height: h });
+        doc.restore();
+        pdf.y += h + 8;
 
         const riscosImg = inspecao.riscos.filter(r => r.imagemUrl === img.midia.url);
         if (riscosImg.length > 0) {
-          let ry = iy + h + 10;
-          const boxH = 16 + Math.min(riscosImg.length, 5) * 13;
-          ry = checkPage(doc, ry, boxH, page);
-          doc.roundedRect(MARGIN, ry, CONTENT_W, boxH, 6).fill(C.redBg);
-          ry += 8;
-          doc.fontSize(9).font('Helvetica-Bold').fillColor(C.red).text(`${riscosImg.length} risco(s) identificado(s):`, MARGIN + 10, ry);
-          ry += 14;
-          for (const r of riscosImg.slice(0, 5)) {
-            doc.fontSize(7).font('Helvetica').fillColor(C.gray700).text(`${r.descricao} (${r.gravidade.toUpperCase()})`, MARGIN + 16, ry, { width: CONTENT_W - 32 });
-            ry += 13;
+          const boxH = 14 + Math.min(riscosImg.length, 4) * 12;
+          pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, boxH, COL.redBg, 4);
+          pdf.drawRect(MARGIN_L, pdf.y, 4, boxH, COL.red);
+          pdf.txt(`${riscosImg.length} risco(s) identificado(s):`, MARGIN_L + 14, pdf.y + 6, { size: 8, font: 'Helvetica-Bold', color: COL.red, width: CONTENT_W - 24 });
+          let ry = pdf.y + 18;
+          for (const r of riscosImg.slice(0, 4)) {
+            pdf.txt(`• ${r.descricao} — ${r.gravidade.toUpperCase()}`, MARGIN_L + 20, ry, { size: 7, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 36 });
+            ry += 12;
           }
+          pdf.y += boxH + 4;
         }
       } catch {
-        doc.fontSize(10).fillColor(C.gray400).text('Imagem não disponível', MARGIN, iy + 20);
+        pdf.txt('Imagem não disponível', MARGIN_L, pdf.y + 10, { size: 10, color: COL.textLight });
+        pdf.y += 30;
       }
-
-      footer(doc, page.value);
     }
 
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     // RISCOS DETALHADOS
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     if (totalRiscos > 0) {
-      page.value++;
-      doc.addPage({ margin: MARGIN });
-      let ry = sectionTitle(doc, 'Riscos Identificados', 40);
+      pdf.newPage();
+      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+      pdf.txt('RISCOS IDENTIFICADOS', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+      pdf.y += 30;
 
-      const gravidadeCor: Record<string, string> = {
-        crítica: C.red, critica: C.red, alta: C.orange,
-        média: C.amber, media: C.amber, baixa: C.green,
+      const gravCor: Record<string, string> = {
+        crítica: COL.red, critica: COL.red, alta: COL.orange,
+        média: COL.amber, media: COL.amber, baixa: COL.green,
       };
 
       for (let i = 0; i < inspecao.riscos.length; i++) {
         const risco = inspecao.riscos[i];
-        ry = checkPage(doc, ry, 90, page);
+        const cor = gravCor[risco.gravidade] || COL.amber;
 
-        const cor = gravidadeCor[risco.gravidade] || C.amber;
+        let cardH = 32;
+        if (risco.consequencias) cardH += 14;
+        if (risco.medidasPreventivas) cardH += 14;
+        if (risco.medidasCorretivas) cardH += 14;
+        if (risco.localIdentificado) cardH += 14;
 
-        // Card
-        doc.roundedRect(MARGIN, ry, CONTENT_W, 82, 6).fillAndStroke(C.white, C.gray200);
+        pdf.ensureSpace(cardH + 10);
 
-        // Borda lateral colorida
-        doc.rect(MARGIN, ry + 6, 4, 70).fill(cor);
+        const cardY = pdf.y;
+        pdf.drawRect(MARGIN_L, cardY, CONTENT_W, cardH, COL.white);
+        pdf.drawRect(MARGIN_L, cardY, 4, cardH, cor);
 
-        // Número
-        doc.circle(MARGIN + 24, ry + 16, 11).fill(cor);
-        doc.fontSize(9).font('Helvetica-Bold').fillColor(C.white).text(`${i + 1}`, MARGIN + 16, ry + 12, { width: 16, align: 'center' });
+        const numY = cardY + 8;
+        pdf.drawRect(MARGIN_L + 12, numY, 20, 20, cor, 10);
+        pdf.txt(String(i + 1), MARGIN_L + 12, numY + 4, { size: 9, font: 'Helvetica-Bold', color: COL.white, width: 20, align: 'center' });
 
-        // Título
-        doc.fontSize(10).font('Helvetica-Bold').fillColor(C.navy).text(risco.descricao, MARGIN + 42, ry + 8, { width: CONTENT_W - 54 });
+        pdf.txt(risco.descricao, MARGIN_L + 40, cardY + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 50 });
 
-        // Badges
-        const bY = ry + 24;
-        doc.roundedRect(MARGIN + 42, bY, 52, 13, 3).fill(cor);
-        doc.fontSize(6).font('Helvetica-Bold').fillColor(C.white).text(risco.gravidade.toUpperCase(), MARGIN + 42, bY + 3, { width: 52, align: 'center' });
+        const badgeY = cardY + 22;
+        pdf.drawRect(MARGIN_L + 40, badgeY, 60, 14, cor, 3);
+        pdf.txt(risco.gravidade.toUpperCase(), MARGIN_L + 40, badgeY + 3, { size: 6, font: 'Helvetica-Bold', color: COL.white, width: 60, align: 'center' });
 
         if (risco.nrsRelacionadas) {
-          doc.roundedRect(MARGIN + 100, bY, 42, 13, 3).fill(C.blueLight);
-          doc.fontSize(6).font('Helvetica-Bold').fillColor(C.blue).text(risco.nrsRelacionadas, MARGIN + 100, bY + 3, { width: 42, align: 'center' });
+          pdf.drawRect(MARGIN_L + 108, badgeY, 45, 14, COL.blueBg, 3);
+          pdf.txt(risco.nrsRelacionadas, MARGIN_L + 108, badgeY + 3, { size: 6, font: 'Helvetica-Bold', color: COL.blue, width: 45, align: 'center' });
         }
 
-        doc.roundedRect(MARGIN + 148, bY, 62, 13, 3).fill(C.gray100);
-        doc.fontSize(6).font('Helvetica').fillColor(C.gray600).text(`${(risco.confianca * 100).toFixed(0)}%`, MARGIN + 148, bY + 3, { width: 62, align: 'center' });
+        pdf.drawRect(MARGIN_L + 160, badgeY, 50, 14, '#F1F5F9', 3);
+        pdf.txt(`${(risco.confianca * 100).toFixed(0)}%`, MARGIN_L + 160, badgeY + 3, { size: 6, font: 'Helvetica', color: COL.textMid, width: 50, align: 'center' });
 
-        // Detalhes
-        let dy = ry + 42;
-        doc.fontSize(7).font('Helvetica').fillColor(C.gray500);
-        doc.text(`Categoria: ${risco.categoria}  |  Local: ${risco.localIdentificado || '---'}`, MARGIN + 42, dy, { width: CONTENT_W - 54 });
-        dy += 11;
-        if (risco.consequencias) {
-          doc.text(`Consequências: ${risco.consequencias}`, MARGIN + 42, dy, { width: CONTENT_W - 54 });
-          dy += 11;
-        }
-        if (risco.medidasPreventivas) {
-          doc.fillColor(C.green).text(`Prevenção: ${risco.medidasPreventivas}`, MARGIN + 42, dy, { width: CONTENT_W - 54 });
-          dy += 11;
-        }
-        if (risco.medidasCorretivas) {
-          doc.fillColor(C.orange).text(`Correção: ${risco.medidasCorretivas}`, MARGIN + 42, dy, { width: CONTENT_W - 54 });
+        let detailY = cardY + 40;
+        const details: Array<{ label: string; value: string; color: string }> = [];
+        if (risco.localIdentificado) details.push({ label: 'Local', value: risco.localIdentificado, color: COL.textMid });
+        if (risco.categoria) details.push({ label: 'Categoria', value: risco.categoria, color: COL.textMid });
+        if (risco.consequencias) details.push({ label: 'Consequências', value: risco.consequencias, color: COL.red });
+        if (risco.medidasPreventivas) details.push({ label: 'Prevenção', value: risco.medidasPreventivas, color: COL.green });
+        if (risco.medidasCorretivas) details.push({ label: 'Correção', value: risco.medidasCorretivas, color: COL.orange });
+
+        for (const d of details) {
+          pdf.txt(`${d.label}: ${d.value}`, MARGIN_L + 44, detailY, { size: 7, font: 'Helvetica', color: d.color, width: CONTENT_W - 56 });
+          detailY += 14;
         }
 
-        ry += 90;
+        pdf.y = cardY + cardH + 8;
       }
-
-      footer(doc, page.value);
     }
 
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     // EPIs
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     if (inspecao.epiViolacoes.length > 0) {
-      page.value++;
-      doc.addPage({ margin: MARGIN });
-      let ey = sectionTitle(doc, 'Análise de EPIs', 40);
+      pdf.newPage();
+      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+      pdf.txt('ANÁLISE DE EPIs', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+      pdf.y += 30;
 
       for (let i = 0; i < inspecao.epiViolacoes.length; i++) {
         const epi = inspecao.epiViolacoes[i];
-        ey = checkPage(doc, ey, 40, page);
-
-        const cor = epi.status === 'ausente' ? C.red : epi.status === 'incorreto' ? C.orange : C.green;
-        const bg = epi.status === 'ausente' ? C.redBg : epi.status === 'incorreto' ? C.orangeLight : C.greenBg;
+        const cor = epi.status === 'ausente' ? COL.red : epi.status === 'incorreto' ? COL.orange : COL.green;
+        const bg = epi.status === 'ausente' ? COL.redBg : epi.status === 'incorreto' ? COL.orangeBg : COL.greenBg;
         const label = epi.status === 'ausente' ? 'AUSENTE' : epi.status === 'incorreto' ? 'INCORRETO' : 'CORRETO';
 
-        doc.roundedRect(MARGIN, ey, CONTENT_W, 34, 6).fillAndStroke(bg, C.gray200);
-        doc.rect(MARGIN, ey + 6, 4, 22).fill(cor);
+        const cardH = epi.descricao ? 40 : 30;
+        pdf.ensureSpace(cardH + 6);
 
-        doc.roundedRect(MARGIN + 14, ey + 7, 60, 20, 4).fill(cor);
-        doc.fontSize(7).font('Helvetica-Bold').fillColor(C.white).text(label, MARGIN + 14, ey + 13, { width: 60, align: 'center' });
+        const ey = pdf.y;
+        pdf.drawRect(MARGIN_L, ey, CONTENT_W, cardH, bg);
+        pdf.drawRect(MARGIN_L, ey, 4, cardH, cor);
 
-        doc.fontSize(10).font('Helvetica-Bold').fillColor(C.navy).text(epi.epiNome, MARGIN + 82, ey + 8, { width: 280 });
-        doc.fontSize(7).font('Helvetica').fillColor(C.gray500).text(`${(epi.confianca * 100).toFixed(0)}%`, MARGIN + CONTENT_W - 50, ey + 10, { width: 40, align: 'right' });
+        pdf.drawRect(MARGIN_L + 14, ey + 7, 60, 16, cor, 3);
+        pdf.txt(label, MARGIN_L + 14, ey + 10, { size: 7, font: 'Helvetica-Bold', color: COL.white, width: 60, align: 'center' });
+
+        pdf.txt(epi.epiNome, MARGIN_L + 84, ey + 7, { size: 10, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 160 });
+
+        pdf.txt(`${(epi.confianca * 100).toFixed(0)}%`, MARGIN_L + CONTENT_W - 50, ey + 9, { size: 8, font: 'Helvetica', color: COL.textMid, width: 40, align: 'right' });
 
         if (epi.descricao) {
-          doc.fontSize(7).fillColor(C.gray500).text(epi.descricao, MARGIN + 82, ey + 22, { width: CONTENT_W - 140 });
+          pdf.txt(epi.descricao, MARGIN_L + 84, ey + 22, { size: 7, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 100 });
         }
 
-        ey += 40;
+        pdf.y = ey + cardH + 6;
       }
-
-      footer(doc, page.value);
     }
 
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
+    // CHECKLIST
+    // ════════════════════════════════════════════════
+    const checklistRespostas = await (prisma as any).checklistResposta.findMany({
+      where: { inspecaoId: inspecao.id },
+      include: { item: true },
+    });
+
+    if (checklistRespostas.length > 0) {
+      pdf.newPage();
+      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+      pdf.txt('CHECKLIST DE CONFORMIDADE', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+      pdf.y += 30;
+
+      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 20, COL.navy);
+      const clCols = [250, 80, 80];
+      const clHeaders = ['ITEM', 'STATUS', 'OBSERVAÇÃO'];
+      let cx = MARGIN_L + 8;
+      clHeaders.forEach((h, i) => {
+        pdf.txt(h, cx, pdf.y + 5, { size: 7, font: 'Helvetica-Bold', color: COL.white, width: clCols[i] });
+        cx += clCols[i];
+      });
+      pdf.y += 20;
+
+      for (let i = 0; i < checklistRespostas.length; i++) {
+        const cr = checklistRespostas[i];
+        const bg = i % 2 === 0 ? '#F8FAFC' : COL.white;
+        const statusCor = cr.resposta === 'conforme' ? COL.green : cr.resposta === 'nao_conforme' ? COL.red : COL.amber;
+        const statusLabel = cr.resposta === 'conforme' ? 'Conforme' : cr.resposta === 'nao_conforme' ? 'Não Conforme' : 'N/A';
+
+        pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 20, bg);
+        pdf.drawRect(MARGIN_L, pdf.y, 3, 20, statusCor);
+
+        let ccx = MARGIN_L + 12;
+        pdf.txt(cr.item?.texto || cr.itemId, ccx, pdf.y + 5, { size: 7, font: 'Helvetica', color: COL.textDark, width: clCols[0] - 12 });
+        ccx += clCols[0];
+        pdf.drawRect(ccx, pdf.y + 4, 70, 12, statusCor, 3);
+        pdf.txt(statusLabel, ccx, pdf.y + 5, { size: 6, font: 'Helvetica-Bold', color: COL.white, width: 70, align: 'center' });
+        ccx += clCols[1];
+        pdf.txt(cr.observacao || '—', ccx, pdf.y + 5, { size: 7, font: 'Helvetica', color: COL.textMid, width: clCols[2] });
+        pdf.y += 20;
+      }
+    }
+
+    // ════════════════════════════════════════════════
     // FOTOS ORIGINAIS
-    // ═══════════════════════════════════════════════════
+    // ════════════════════════════════════════════════
     const fotos = inspecao.midias.filter(m => m.tipo === 'foto');
     if (fotos.length > 0) {
-      page.value++;
-      doc.addPage({ margin: MARGIN });
-      let fy = sectionTitle(doc, 'Evidências Fotográficas', 40);
+      pdf.newPage();
+      pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+      pdf.txt('EVIDÊNCIAS FOTOGRÁFICAS', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+      pdf.y += 30;
+
       let col = 0;
+      const colW = (CONTENT_W - 12) / 2;
+      let rowMaxH = 0;
 
       for (const foto of fotos) {
         const imgPath = path.join(uploadsDir, foto.url.replace('/uploads/', ''));
@@ -400,63 +526,81 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
           const meta = await sharp(imgPath).metadata();
           const imgW = meta.width || 300;
           const imgH = meta.height || 200;
-          const maxSize = 210;
-          const scale = Math.min(maxSize / imgW, maxSize / imgH);
+          const scale = Math.min(colW / imgW, 200 / imgH);
           const w = imgW * scale;
           const h = imgH * scale;
 
-          fy = checkPage(doc, fy, h + 22, page);
+          const totalH = h + 18;
+          if (col === 0) {
+            pdf.ensureSpace(totalH + 10);
+          } else {
+            if (pdf.y + totalH > MAX_Y) {
+              pdf.y += rowMaxH + 8;
+              col = 0;
+              rowMaxH = 0;
+              pdf.ensureSpace(totalH + 10);
+            }
+          }
 
-          const x = col === 0 ? MARGIN : MARGIN + CONTENT_W / 2 + 8;
+          const fx = col === 0 ? MARGIN_L : MARGIN_L + colW + 12;
+          const fy = pdf.y;
 
-          doc.roundedRect(x - 2, fy - 2, w + 4, h + 4, 4).fill(C.gray200);
-          doc.image(imgPath, x, fy, { width: w, height: h });
-          doc.fontSize(7).font('Helvetica').fillColor(C.gray500).text(foto.nome, x, fy + h + 4, { width: w });
+          pdf.drawRect(fx - 2, fy - 2, w + 4, h + 4, COL.border, 4);
+          doc.save();
+          doc.image(imgPath, fx, fy, { width: w, height: h });
+          doc.restore();
+          pdf.txt(foto.nome, fx, fy + h + 4, { size: 7, font: 'Helvetica', color: COL.textMid, width: w });
 
+          rowMaxH = Math.max(rowMaxH, totalH);
           col = col === 0 ? 1 : 0;
-          if (col === 0) fy += h + 22;
+          if (col === 0) {
+            pdf.y += rowMaxH + 8;
+            rowMaxH = 0;
+          }
         } catch {
           // skip
         }
       }
-
-      footer(doc, page.value);
+      if (col === 1) {
+        pdf.y += rowMaxH + 8;
+      }
     }
 
-    // ═══════════════════════════════════════════════════
-    // ASSINATURA
-    // ═══════════════════════════════════════════════════
-    page.value++;
-    doc.addPage({ margin: MARGIN });
-    let sy = sectionTitle(doc, 'Conclusão', 40);
+    // ════════════════════════════════════════════════
+    // CONCLUSÃO / ASSINATURA
+    // ════════════════════════════════════════════════
+    pdf.newPage();
+    pdf.addBg(MARGIN_L - 5, pdf.y - 5, CONTENT_W + 10, 26, COL.navy, 4);
+    pdf.txt('CONCLUSÃO', MARGIN_L, pdf.y, { size: 12, font: 'Helvetica-Bold', color: COL.white, width: CONTENT_W });
+    pdf.y += 30;
 
-    // Card do técnico
-    doc.roundedRect(MARGIN, sy, CONTENT_W, 80, 8).fillAndStroke(C.gray50, C.gray200);
-    doc.fontSize(10).font('Helvetica-Bold').fillColor(C.navy).text('Técnico Responsável', MARGIN + 16, sy + 10);
-    doc.fontSize(9).font('Helvetica').fillColor(C.gray700);
-    doc.text(`Nome: ${inspecao.usuario.nome}`, MARGIN + 16, sy + 28, { width: 220 });
-    doc.text(`E-mail: ${inspecao.usuario.email}`, MARGIN + 16, sy + 42, { width: 220 });
-    doc.text(`Data da Inspeção: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`, MARGIN + 260, sy + 28, { width: 200 });
-    doc.text(`Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, MARGIN + 260, sy + 42, { width: 200 });
-    sy += 94;
+    const conclH = 90;
+    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, conclH, '#F8FAFC', 6);
+    pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, 1, COL.border);
 
-    // Observações
+    pdf.txt('Técnico Responsável', MARGIN_L + 16, pdf.y + 12, { size: 10, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 32 });
+    pdf.txt(`Nome: ${inspecao.usuario.nome}`, MARGIN_L + 16, pdf.y + 30, { size: 8, font: 'Helvetica', color: COL.textMid, width: 220 });
+    pdf.txt(`E-mail: ${inspecao.usuario.email}`, MARGIN_L + 16, pdf.y + 44, { size: 8, font: 'Helvetica', color: COL.textMid, width: 220 });
+    pdf.txt(`Data da Inspeção: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`, MARGIN_L + 260, pdf.y + 30, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
+    pdf.txt(`Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, MARGIN_L + 260, pdf.y + 44, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
+    pdf.y += conclH;
+
     if (inspecao.observacoes) {
-      doc.roundedRect(MARGIN, sy, CONTENT_W, 50, 6).fillAndStroke(C.amberLight, C.amber);
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(C.navy).text('Observações', MARGIN + 12, sy + 8);
-      doc.fontSize(8).font('Helvetica').fillColor(C.gray700).text(inspecao.observacoes, MARGIN + 12, sy + 22, { width: CONTENT_W - 24, height: 22 });
-      sy += 64;
+      pdf.gap(16);
+      const obsH = 50;
+      pdf.drawRect(MARGIN_L, pdf.y, CONTENT_W, obsH, COL.amberBg, 4);
+      pdf.drawRect(MARGIN_L, pdf.y, 4, obsH, COL.amber);
+      pdf.txt('Observações', MARGIN_L + 16, pdf.y + 8, { size: 9, font: 'Helvetica-Bold', color: COL.textDark, width: CONTENT_W - 32 });
+      pdf.txt(inspecao.observacoes, MARGIN_L + 16, pdf.y + 24, { size: 8, font: 'Helvetica', color: COL.textMid, width: CONTENT_W - 36 });
+      pdf.y += obsH + 8;
     }
 
-    // Linha de assinatura
-    sy += 20;
-    doc.moveTo(MARGIN, sy).lineTo(MARGIN + 220, sy).strokeColor(C.gray300).lineWidth(1).stroke();
-    doc.fontSize(8).font('Helvetica').fillColor(C.gray500).text(inspecao.usuario.nome, MARGIN, sy + 6);
-    doc.text(new Date().toLocaleDateString('pt-BR'), MARGIN, sy + 18);
+    pdf.gap(30);
+    pdf.drawRect(MARGIN_L, pdf.y, 200, 1, COL.border);
+    pdf.txt(inspecao.usuario.nome, MARGIN_L, pdf.y + 8, { size: 8, font: 'Helvetica-Bold', color: COL.textDark, width: 200 });
+    pdf.txt(new Date().toLocaleDateString('pt-BR'), MARGIN_L, pdf.y + 22, { size: 8, font: 'Helvetica', color: COL.textMid, width: 200 });
 
-    footer(doc, page.value);
-
-    doc.end();
+    pdf.finalize();
   } catch (err: any) {
     console.error('Erro ao gerar relatório:', err);
     res.status(500).json({ error: err.message || 'Erro ao gerar relatório' });
