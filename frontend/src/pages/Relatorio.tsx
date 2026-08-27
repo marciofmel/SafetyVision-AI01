@@ -16,7 +16,7 @@ export default function Relatorio() {
 
   const getPDFBlob = async (): Promise<Blob> => {
     const token = localStorage.getItem('sv_token');
-    const response = await fetch(`/api/relatorio/${id}/relatorio`, {
+    const response = await fetch(`/api/relatorios/${id}/gerar`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) throw new Error('Erro ao gerar PDF');
@@ -104,21 +104,16 @@ export default function Relatorio() {
   const downloadPDF = async () => {
     setDownloading(true);
     try {
-      const token = localStorage.getItem('sv_token');
-      const response = await fetch(`/api/relatorio/${id}/relatorio`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Erro ao baixar PDF');
-      const blob = await response.blob();
+      const blob = await getPDFBlob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `relatorio-${id?.slice(0, 8)}.pdf`;
+      a.download = `relatorio-${inspecao.empresa?.nome || id?.slice(0, 8)}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success('PDF baixado!');
+      toast.success('PDF baixado e salvo na plataforma!');
     } catch (err) {
       toast.error('Erro ao baixar relatório');
     } finally {

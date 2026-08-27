@@ -26,6 +26,7 @@ export default function TecnicoLayout() {
     { to: '/tecnico/colaboradores', icon: <FiUser size={20} />, label: 'Colaboradores' },
     { to: '/tecnico/setores', icon: <FiGrid size={20} />, label: 'Seções' },
     { to: '/tecnico/historico', icon: <FiClock size={20} />, label: 'Histórico' },
+    { to: '/tecnico/relatorios', icon: <FiFileText size={20} />, label: 'Relatórios' },
   ];
 
   const Sidebar = () => (

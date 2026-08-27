@@ -18,6 +18,7 @@ import EmpresaDetalhe from './pages/tecnico/EmpresaDetalhe';
 import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
 import SetoresTecnico from './pages/tecnico/SetoresTecnico';
 import NRTecnico from './pages/tecnico/NRTecnico';
+import RelatoriosTecnico from './pages/tecnico/RelatoriosTecnico';
 import ConfigTecnico from './pages/tecnico/ConfigTecnico';
 import ChecklistsTecnico from './pages/tecnico/ChecklistsTecnico';
 import CalculadoraNR28 from './pages/tecnico/CalculadoraNR28';
@@ -107,6 +108,7 @@ export default function App() {
         <Route path="cipa" element={<CIPATecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
+        <Route path="relatorios" element={<RelatoriosTecnico />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />

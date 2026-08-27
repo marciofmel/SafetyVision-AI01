@@ -29,6 +29,7 @@ import adminDataRoutes from './routes/adminData';
 import asoRoutes from './routes/aso';
 import cipaRoutes from './routes/cipa';
 import alertasRoutes from './routes/alertas';
+import relatoriosSalvosRoutes from './routes/relatorios';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -62,6 +63,7 @@ app.use('/api/admin-data', authMiddleware, adminDataRoutes);
 app.use('/api/asos', authMiddleware, asoRoutes);
 app.use('/api/cipa', authMiddleware, cipaRoutes);
 app.use('/api/alertas', authMiddleware, alertasRoutes);
+app.use('/api/relatorios', authMiddleware, relatoriosSalvosRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 
