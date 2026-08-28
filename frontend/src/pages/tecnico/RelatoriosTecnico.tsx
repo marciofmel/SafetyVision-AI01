@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2 } from 'react-icons/fi';
 import api from '../../api';
+import toast from 'react-hot-toast';
 
 interface Relatorio {
   id: string;
@@ -60,15 +61,23 @@ export default function RelatoriosTecnico() {
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
     } else {
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = r.nomeArquivo;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-      window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\nBaixe o PDF anexado.')}`, '_blank');
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'application/pdf': blob })
+        ]);
+        toast.success('PDF copiado! Cole (Ctrl+V) no WhatsApp.', { duration: 6000 });
+      } catch {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = r.nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('PDF baixado! Anexe no WhatsApp.', { duration: 6000 });
+      }
+      window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
     }
   };
 

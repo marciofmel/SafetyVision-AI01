@@ -27,24 +27,39 @@ export default function Relatorio() {
     setSharing(true);
     try {
       const blob = await getPDFBlob();
-      const file = new File([blob], `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`, { type: 'application/pdf' });
+      const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
       const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
 
+      // Tentar Web Share API (funciona em mobile e desktop Chrome)
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-      } else {
-        // Fallback: baixar PDF e abrir WhatsApp com texto
+        toast.success('PDF compartilhado!');
+        setSharing(false);
+        return;
+      }
+
+      // Fallback: copiar PDF para clipboard + baixar + abrir WhatsApp
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'application/pdf': blob })
+        ]);
+        toast.success('PDF copiado! Cole (Ctrl+V) no WhatsApp.', { duration: 6000 });
+      } catch {
+        // Se clipboard falhar, apenas baixar
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        toast.success('PDF baixado! Anexe no WhatsApp.');
-        window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\n📄 PDF baixado. Anexe-o na conversa.')}`, '_blank');
+        toast.success('PDF baixado! Anexe no WhatsApp (ícone de clip).', { duration: 6000 });
       }
+
+      // Abrir WhatsApp
+      window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         toast.error('Erro ao compartilhar');
