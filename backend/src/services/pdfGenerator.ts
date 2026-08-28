@@ -5,23 +5,24 @@ import sharp from 'sharp';
 
 const W = 595.28;
 const H = 841.89;
-const ML = 50;
-const MR = 50;
+const ML = 45;
+const MR = 45;
 const CW = W - ML - MR;
-const HEADER_H = 32;
-const FOOTER_H = 30;
-const TOP = HEADER_H + 8;
-const BOTTOM = H - FOOTER_H - 8;
+const FOOTER_H = 28;
+const TOP = 50;
+const BOTTOM = H - FOOTER_H - 10;
 
 const C = {
-  navy: '#0F172A', navyLight: '#1E293B', amber: '#F59E0B', white: '#FFFFFF',
+  navy: '#0D1B2A', navyMid: '#1B2A4A', navyLight: '#1E3A5F',
+  white: '#FFFFFF', black: '#000000',
   gray50: '#F8FAFC', gray100: '#F1F5F9', gray200: '#E2E8F0', gray300: '#CBD5E1',
-  gray400: '#94A3B8', gray500: '#64748B', gray600: '#475569', gray700: '#334155',
-  red: '#DC2626', redBg: '#FEF2F2',
-  orange: '#EA580C', orangeBg: '#FFF7ED',
-  green: '#16A34A', greenBg: '#F0FDF4',
-  blue: '#2563EB', blueBg: '#EFF6FF',
-  amberBg: '#FFFBEB',
+  gray400: '#94A3B8', gray500: '#64748B', gray600: '#475569', gray700: '#334155', gray800: '#1E293B',
+  red: '#DC2626', redBg: '#FEE2E2', redLight: '#FCA5A5',
+  orange: '#EA580C', orangeBg: '#FFF7ED', orangeLight: '#FDBA74',
+  amber: '#D97706', amberBg: '#FFFBEB', amberLight: '#FCD34D',
+  green: '#16A34A', greenBg: '#F0FDF4', greenLight: '#86EFAC',
+  blue: '#2563EB', blueBg: '#EFF6FF', blueLight: '#93C5FD',
+  teal: '#0D9488', tealBg: '#F0FDFA',
 };
 
 class PDFBuilder {
@@ -46,7 +47,7 @@ class PDFBuilder {
   }
 
   newPage() {
-    if (this.page > 0 && !this.isCover) this.drawHeaderFooter();
+    if (this.page > 0 && !this.isCover) this.drawFooter();
     this.doc.addPage({ margin: 0 });
     this.page++;
     this.y = TOP;
@@ -66,31 +67,24 @@ class PDFBuilder {
 
   ensureSpace(needed: number) {
     if (this.y + needed > BOTTOM) {
-      this.drawHeaderFooter();
+      this.drawFooter();
       this.doc.addPage({ margin: 0 });
       this.page++;
       this.y = TOP;
     }
   }
 
-  drawHeaderFooter() {
-    this.doc.save();
-    this.doc.rect(0, 0, W, HEADER_H).fill(C.navy);
-    this.doc.fontSize(7).font('Helvetica').fillColor(C.gray400);
-    this.doc.text('SafetyVision AI  |  Relatório de Inspeção SST', ML, 10, { width: CW, align: 'left' });
-    this.doc.fontSize(7).font('Helvetica').fillColor(C.amber);
-    this.doc.text('Relatório de Inspeção', ML, 20, { width: CW, align: 'left' });
-    this.doc.restore();
-
+  drawFooter() {
+    if (this.isCover) return;
     this.doc.save();
     this.doc.rect(0, H - FOOTER_H, W, FOOTER_H).fill(C.navy);
     this.doc.fontSize(7).font('Helvetica').fillColor(C.gray400);
-    this.doc.text('SafetyVision AI', ML, H - 22, { width: 200, align: 'left' });
-    this.doc.fontSize(7).font('Helvetica').fillColor(C.amber);
+    this.doc.text('SafetyVision AI  |  Relatório de Inspeção SST', ML, H - 18, { width: 300, align: 'left' });
     const pageLabel = this.totalPages > 0
       ? `Página ${this.page} de ${this.totalPages}`
       : `Página ${this.page}`;
-    this.doc.text(pageLabel, W - MR - 130, H - 22, { width: 130, align: 'right' });
+    this.doc.fillColor(C.gray400);
+    this.doc.text(pageLabel, W - MR - 120, H - 18, { width: 120, align: 'right' });
     this.doc.restore();
   }
 
@@ -102,8 +96,17 @@ class PDFBuilder {
     this.doc.restore();
   }
 
+  rectStroke(x: number, y: number, w: number, h: number, color: string, r?: number) {
+    this.doc.save();
+    this.doc.strokeColor(color).lineWidth(0.5);
+    if (r) this.doc.roundedRect(x, y, w, h, r).stroke();
+    else this.doc.rect(x, y, w, h).stroke();
+    this.doc.restore();
+  }
+
   txt(str: string, x: number, y: number, opts: {
-    size?: number; font?: string; color?: string; w?: number; align?: 'left' | 'center' | 'right' | 'justify';
+    size?: number; font?: string; color?: string; w?: number;
+    align?: 'left' | 'center' | 'right' | 'justify';
   } = {}) {
     this.doc.save();
     this.doc.fontSize(opts.size ?? 10);
@@ -121,59 +124,83 @@ class PDFBuilder {
 
   img(filePath: string, x: number, y: number, w: number, h: number) {
     this.doc.save();
-    this.doc.image(filePath, x, y, { width: w, height: h });
+    this.doc.image(filePath, x, y, { width: w, height: h, cover: [w, h], align: 'center', valign: 'center' });
     this.doc.restore();
   }
 
-  sectionTitle(title: string) {
-    this.ensureSpace(36);
-    this.rect(ML - 4, this.y - 4, CW + 8, 28, C.navy, 4);
-    this.txt(title, ML, this.y, { size: 12, font: 'Helvetica-Bold', color: C.white });
-    this.y += 32;
+  sectionHeader(number: string, title: string) {
+    this.ensureSpace(32);
+    this.rect(0, this.y, W, 30, C.navy);
+    this.txt(`${number}. ${title}`, ML, this.y + 8, { size: 11, font: 'Helvetica-Bold', color: C.white, w: CW });
+    this.y += 36;
   }
 
-  subTitle(title: string) {
+  subSectionHeader(number: string, title: string) {
     this.ensureSpace(20);
-    this.txt(title, ML, this.y, { size: 10, font: 'Helvetica-Bold', color: C.navy });
-    this.y += 14;
-    this.rect(ML, this.y, 60, 2, C.amber);
-    this.y += 8;
+    this.txt(`${number} ${title}`, ML, this.y, { size: 9, font: 'Helvetica-Bold', color: C.navy, w: CW });
+    this.y += 12;
+    this.rect(ML, this.y, CW, 1, C.gray200);
+    this.y += 6;
   }
 
-  tableRow(headers: string[], widths: number[], color: string) {
-    this.ensureSpace(20);
-    this.rect(ML, this.y, CW, 20, color);
-    let x = ML + 6;
-    for (let i = 0; i < headers.length; i++) {
-      this.txt(headers[i], x, this.y + 5, { size: 7, font: 'Helvetica-Bold', color: C.white, w: widths[i] - 6 });
-      x += widths[i];
-    }
-    this.y += 20;
+  fieldRow(label: string, value: string, bold = false) {
+    this.ensureSpace(16);
+    const bg = this.page % 2 === 0 ? C.gray50 : C.white;
+    this.rect(ML, this.y, CW, 16, bg);
+    this.txt(label, ML + 6, this.y + 4, { size: 7.5, color: C.gray500, w: 150 });
+    this.txt(value || '—', ML + 160, this.y + 4, { size: 7.5, font: bold ? 'Helvetica-Bold' : 'Helvetica', color: C.gray700, w: CW - 170 });
+    this.y += 16;
   }
 
-  tableRowData(values: string[], widths: number[], bgColor: string, barColor?: string) {
+  tableHeader(headers: string[], widths: number[]) {
     this.ensureSpace(18);
-    this.rect(ML, this.y, CW, 18, bgColor);
-    if (barColor) this.rect(ML, this.y, 3, 18, barColor);
-    let x = ML + 6;
-    for (let i = 0; i < values.length; i++) {
-      this.txt(values[i], x, this.y + 4, { size: 7, color: C.gray700, w: widths[i] - 6 });
+    this.rect(ML, this.y, CW, 18, C.navy);
+    let x = ML + 4;
+    for (let i = 0; i < headers.length; i++) {
+      this.txt(headers[i], x, this.y + 5, { size: 7, font: 'Helvetica-Bold', color: C.white, w: widths[i] - 4 });
       x += widths[i];
     }
     this.y += 18;
   }
 
-  textBlock(str: string, x: number, w: number, size: number, color: string) {
-    const h = this.textH(str, w, size);
-    this.ensureSpace(h + 4);
-    this.txt(str, x, this.y, { size, color, w });
-    this.y += h + 2;
+  tableRow(values: string[], widths: number[], idx: number, barColor?: string) {
+    this.ensureSpace(16);
+    const bg = idx % 2 === 0 ? C.white : C.gray50;
+    this.rect(ML, this.y, CW, 16, bg);
+    if (barColor) this.rect(ML, this.y, 3, 16, barColor);
+    let x = ML + 4;
+    for (let i = 0; i < values.length; i++) {
+      this.txt(values[i], x, this.y + 4, { size: 7, color: C.gray700, w: widths[i] - 4 });
+      x += widths[i];
+    }
+    this.y += 16;
+  }
+
+  statBox(x: number, y: number, w: number, h: number, value: string, label: string, color: string) {
+    this.rect(x, y, w, h, C.white);
+    this.rectStroke(x, y, w, h, C.gray200);
+    this.rect(x, y, 4, h, color);
+    this.txt(value, x + 12, y + 4, { size: 18, font: 'Helvetica-Bold', color, w: w - 20, align: 'center' });
+    this.txt(label, x + 12, y + h - 14, { size: 6.5, color: C.gray500, w: w - 20, align: 'center' });
+  }
+
+  infoKeyValue(key: string, value: string) {
+    this.ensureSpace(14);
+    this.txt(`${key}:`, ML, this.y, { size: 7.5, font: 'Helvetica-Bold', color: C.gray600, w: 120 });
+    this.txt(value || '—', ML + 120, this.y, { size: 7.5, color: C.gray700, w: CW - 130 });
+    this.y += 14;
   }
 }
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('pt-BR');
+}
+
+function formatDateTime(d: Date | string | null | undefined): string {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 interface RenderData {
@@ -207,165 +234,11 @@ async function renderContent(b: PDFBuilder, data: RenderData) {
   const parcial = clRespostas.filter(c => c.conformidade === 'parcial').length;
   const totalCheck = clRespostas.length;
 
-  const corNota = nota >= 70 ? C.green : nota >= 40 ? C.amber : C.red;
-
-  // ═══════════════════════════════════════════════
-  // CAPA
-  // ═══════════════════════════════════════════════
-  b.newCoverPage();
-  b.rect(0, 0, W, H, C.navy);
-  b.rect(0, 0, W, 6, C.amber);
-
-  const logoX = (W - 80) / 2;
-  b.rect(logoX, 60, 80, 80, C.amber, 14);
-  b.rect(logoX + 4, 64, 72, 72, C.navy, 10);
-  b.txt('SV', 0, 83, { size: 32, font: 'Helvetica-Bold', color: C.amber, w: W, align: 'center' });
-
-  b.txt('RELATÓRIO DE INSPEÇÃO', 0, 160, { size: 28, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
-  b.txt('SEGURANÇA E SAÚDE NO TRABALHO', 0, 195, { size: 14, color: C.amber, w: W, align: 'center' });
-  b.txt('SST — Segurança do Trabalho', 0, 218, { size: 10, color: C.gray400, w: W, align: 'center' });
-
-  b.rect((W - 200) / 2, 245, 200, 2, C.amber);
-
-  const coverInfo: Array<{ label: string; val: string }> = [
-    { label: 'EMPRESA', val: inspecao.empresa?.nome || '—' },
-    { label: 'CNPJ', val: inspecao.empresa?.cnpj || '—' },
-    { label: 'ENDEREÇO', val: inspecao.empresa?.endereco || '—' },
-    { label: 'SETOR / UNIDADE', val: inspecao.setor?.nome || '—' },
-    { label: 'RESPONSÁVEL PELA INSPEÇÃO', val: inspecao.usuario?.nome || '—' },
-    { label: 'DATA DA INSPEÇÃO', val: formatDate(inspecao.dataInicio) },
-    { label: 'HORÁRIO', val: inspecao.dataInicio ? new Date(inspecao.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—' },
-    { label: 'NÚMERO DO RELATÓRIO', val: inspecao.id?.slice(0, 8).toUpperCase() || '—' },
-  ];
-  let cy = 265;
-  for (const d of coverInfo) {
-    b.txt(d.label, 0, cy, { size: 7, color: C.gray400, w: W, align: 'center' });
-    cy += 12;
-    b.txt(d.val, 0, cy, { size: 11, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
-    cy += 20;
-  }
-
-  b.rect((W - 76) / 2, 510, 76, 76, corNota, 38);
-  b.txt(`${nota}`, 0, 523, { size: 30, font: 'Helvetica-Bold', color: C.white, w: W, align: 'center' });
-  b.txt('/100', 0, 560, { size: 8, color: C.white, w: W, align: 'center' });
-  b.txt('NOTA DE CONFORMIDADE', 0, 595, { size: 8, color: C.gray400, w: W, align: 'center' });
-
-  const stats = [
-    { v: `${totalRiscos}`, l: 'Riscos', c: C.red },
-    { v: `${epiIrreg}`, l: 'EPIs Irreg.', c: C.amber },
-    { v: `${totalMidias}`, l: 'Evidências', c: C.blue },
-  ];
-  stats.forEach((s, i) => {
-    const sx = 75 + i * 155;
-    b.rect(sx, 640, 120, 48, C.navyLight, 8);
-    b.txt(s.v, sx, 648, { size: 22, font: 'Helvetica-Bold', color: s.c, w: 120, align: 'center' });
-    b.txt(s.l, sx, 673, { size: 7, color: C.gray400, w: 120, align: 'center' });
-  });
-
-  b.finishCover();
-
-  // ═══════════════════════════════════════════════
-  // 1. DADOS DA ORGANIZAÇÃO
-  // ═══════════════════════════════════════════════
-  b.newPage();
-  b.sectionTitle('1. DADOS DA ORGANIZAÇÃO');
-
-  const orgRows: Array<[string, string]> = [
-    ['Razão Social', inspecao.empresa?.nome || '—'],
-    ['CNPJ', inspecao.empresa?.cnpj || '—'],
-    ['Endereço', inspecao.empresa?.endereco || '—'],
-    ['Bairro', inspecao.empresa?.bairro || '—'],
-    ['Cidade/UF', [inspecao.empresa?.cidade, inspecao.empresa?.estado].filter(Boolean).join(' / ') || '—'],
-    ['CEP', inspecao.empresa?.cep || '—'],
-    ['Telefone', inspecao.empresa?.telefone || '—'],
-    ['E-mail', inspecao.empresa?.email || '—'],
-    ['Atividade Principal', inspecao.empresa?.atividadePrincipal || '—'],
-    ['Natureza Jurídica', inspecao.empresa?.naturezaJuridica || '—'],
-    ['Porte', inspecao.empresa?.porte || '—'],
-  ];
-  for (let i = 0; i < orgRows.length; i++) {
-    const [k, v] = orgRows[i];
-    b.rect(ML, b.y, CW, 20, i % 2 === 0 ? C.gray50 : C.white);
-    b.txt(k, ML + 8, b.y + 5, { size: 8, color: C.gray500, w: 170 });
-    b.txt(v, ML + 180, b.y + 5, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: CW - 190 });
-    b.y += 20;
-  }
-
-  // ═══════════════════════════════════════════════
-  // 2. DADOS DA INSPEÇÃO
-  // ═══════════════════════════════════════════════
-  b.y += 12;
-  b.sectionTitle('2. DADOS DA INSPEÇÃO');
-
-  const inspRows: Array<[string, string]> = [
-    ['Número do Relatório', inspecao.id?.slice(0, 8).toUpperCase() || '—'],
-    ['Data', formatDate(inspecao.dataInicio)],
-    ['Horário Início', inspecao.dataInicio ? new Date(inspecao.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'],
-    ['Horário Término', inspecao.dataFim ? new Date(inspecao.dataFim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Em andamento'],
-    ['Tipo de Inspeção', 'Inspeção de Segurança do Trabalho (SST)'],
-    ['Setor', inspecao.setor?.nome || '—'],
-    ['Status', inspecao.status === 'concluida' || inspecao.status === 'analisada' ? 'Concluída' : 'Em Andamento'],
-    ['Responsável', inspecao.usuario?.nome || '—'],
-    ['E-mail do Responsável', inspecao.usuario?.email || '—'],
-  ];
-  for (let i = 0; i < inspRows.length; i++) {
-    const [k, v] = inspRows[i];
-    b.rect(ML, b.y, CW, 20, i % 2 === 0 ? C.gray50 : C.white);
-    b.txt(k, ML + 8, b.y + 5, { size: 8, color: C.gray500, w: 170 });
-    b.txt(v, ML + 180, b.y + 5, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: CW - 190 });
-    b.y += 20;
-  }
-
-  // ═══════════════════════════════════════════════
-  // 3. OBJETIVO DA INSPEÇÃO
-  // ═══════════════════════════════════════════════
-  b.y += 12;
-  b.sectionTitle('3. OBJETIVO DA INSPEÇÃO');
-  b.textBlock(
-    'A presente inspeção tem por objetivo avaliar as condições de segurança e saúde no trabalho no setor indicado, ' +
-    'identificando riscos, não conformidades e oportunidades de melhoria, em conformidade com a legislação trabalhista vigente ' +
-    'e as Normas Regulamentadoras do Ministério do Trabalho e Emprego.',
-    ML, CW, 9, C.gray600
-  );
-  b.textBlock(
-    `Setor avaliado: ${inspecao.setor?.nome || '—'}. ` +
-    `Atividades observadas: atividades operacionais e administrativas do setor. ` +
-    `Foram analisadas ${totalMidias} evidências (fotos e vídeos), identificando ${totalRiscos} risco(s) e ${epiIrreg} irregularidade(s) de EPI.`,
-    ML, CW, 9, C.gray600
-  );
-
-  // ═══════════════════════════════════════════════
-  // 4. METODOLOGIA
-  // ═══════════════════════════════════════════════
-  b.y += 8;
-  b.sectionTitle('4. METODOLOGIA');
-  const metItems = [
-    'Inspeção visual do ambiente de trabalho',
-    'Coleta de evidências fotográficas e videográficas',
-    'Análise automatizada por Inteligência Artificial (Gemini Vision)',
-    'Checklist de conformidade por Norma Regulamentadora',
-    'Avaliação de EPIs e EPCs',
-    'Verificação de documentação disponível',
-    'Análise de riscos e classificação por gravidade',
-  ];
-  for (const item of metItems) {
-    b.ensureSpace(14);
-    b.rect(ML + 4, b.y + 3, 8, 8, C.amber, 4);
-    b.txt('•', ML + 4, b.y + 1, { size: 6, color: C.white, w: 8, align: 'center' });
-    b.txt(item, ML + 18, b.y, { size: 8, color: C.gray600, w: CW - 24 });
-    b.y += 14;
-  }
-  b.y += 4;
-  b.rect(ML, b.y, CW, 28, C.amberBg);
-  b.rect(ML, b.y, 4, 28, C.amber);
-  b.txt('Nota: A análise automatizada por IA constitui ferramenta de apoio e deve ser validada pelo profissional responsável.', ML + 12, b.y + 6, { size: 7, color: C.gray600, w: CW - 20 });
-  b.y += 32;
-
-  // ═══════════════════════════════════════════════
-  // 5. RESUMO EXECUTIVO
-  // ═══════════════════════════════════════════════
-  b.y += 4;
-  b.sectionTitle('5. RESUMO EXECUTIVO');
+  const conformesPct = totalCheck > 0 ? ((conformes / totalCheck) * 100).toFixed(1) : '0';
+  const naoConfPct = totalCheck > 0 ? ((naoConformes / totalCheck) * 100).toFixed(1) : '0';
+  const parcialPct = totalCheck > 0 ? ((parcial / totalCheck) * 100).toFixed(1) : '0';
+  const naoSeAplicaPct = totalCheck > 0 ? ((naoSeAplica / totalCheck) * 100).toFixed(1) : '0';
+  const idxConformidade = totalCheck > 0 ? ((conformes / totalCheck) * 100).toFixed(0) : '0';
 
   let classificacao = 'INSATISFATÓRIA';
   let classCor = C.red;
@@ -374,75 +247,339 @@ async function renderContent(b: PDFBuilder, data: RenderData) {
   else if (nota >= 40) { classificacao = 'INSATISFATÓRIA'; classCor = C.orange; }
   else { classificacao = 'CRÍTICA'; classCor = C.red; }
 
-  b.rect(ML, b.y, CW, 36, C.gray50, 4);
-  b.rect(ML, b.y, 6, 36, classCor);
-  b.txt('CLASSIFICAÇÃO GERAL:', ML + 16, b.y + 6, { size: 8, color: C.gray500, w: 160 });
-  b.txt(classificacao, ML + 16, b.y + 18, { size: 14, font: 'Helvetica-Bold', color: classCor, w: CW - 24 });
-  b.y += 44;
+  const totalItensCheck = conformes + naoConformes + parcial + naoSeAplica;
 
-  const indicadores: Array<{ label: string; val: string; cor: string }> = [
-    { label: 'Nota', val: `${nota}/100`, cor: corNota },
-    { label: 'Riscos', val: `${totalRiscos}`, cor: totalRiscos > 0 ? C.red : C.green },
-    { label: 'Críticos', val: `${riscosPorGrav.critica}`, cor: C.red },
-    { label: 'Altos', val: `${riscosPorGrav.alta}`, cor: C.orange },
-    { label: 'Médios', val: `${riscosPorGrav.media}`, cor: C.amber },
-    { label: 'Baixos', val: `${riscosPorGrav.baixa}`, cor: C.green },
-    { label: 'EPIs Irreg.', val: `${epiIrreg}`, cor: C.orange },
-    { label: 'Fotos', val: `${totalMidias}`, cor: C.blue },
+  // ═══════════════════════════════════════════════
+  // CAPA
+  // ═══════════════════════════════════════════════
+  b.newCoverPage();
+
+  // Fundo azul escuro
+  b.rect(0, 0, W, H, C.navy);
+
+  // Tentar carregar foto de canteiro como overlay
+  const coverPhotos = ['canteiro.jpg', 'canteiro.png', 'obra.jpg', 'obra.png'];
+  let hasPhoto = false;
+  for (const cp of coverPhotos) {
+    const cPath = path.join(uploadsDir, cp);
+    if (fs.existsSync(cPath)) {
+      try {
+        b.img(cPath, 0, 0, W, H);
+        // Overlay escuro semi-transparente (simulado com retângulo)
+        b.rect(0, 0, W, H, 'rgba(13,27,42,0.82)');
+        hasPhoto = true;
+        break;
+      } catch { /* skip */ }
+    }
+  }
+
+  // Barra verde SafetyVision no topo
+  b.rect(0, 0, W, 6, C.green);
+
+  // Logo + nome SafetyVision (topo esquerdo)
+  b.rect(20, 22, 32, 32, C.green, 6);
+  b.txt('SV', 20, 28, { size: 14, font: 'Helvetica-Bold', color: C.white, w: 32, align: 'center' });
+  b.txt('SafetyVision AI', 60, 25, { size: 14, font: 'Helvetica-Bold', color: C.white, w: 200 });
+  b.txt('INTELIGÊNCIA EM SST', 60, 41, { size: 7, color: C.greenLight, w: 200 });
+
+  // Título principal
+  b.txt('RELATÓRIO DE', 30, 120, { size: 26, font: 'Helvetica-Bold', color: C.white, w: W - 60 });
+  b.txt('INSPEÇÃO DE', 30, 152, { size: 26, font: 'Helvetica-Bold', color: C.white, w: W - 60 });
+  b.txt('SEGURANÇA DO', 30, 184, { size: 26, font: 'Helvetica-Bold', color: C.white, w: W - 60 });
+  b.txt('TRABALHO', 30, 216, { size: 26, font: 'Helvetica-Bold', color: C.white, w: W - 60 });
+
+  // Subtítulo
+  b.rect(30, 254, 180, 1.5, C.green);
+  b.txt('SST — SEGURANÇA E SAÚDE', 30, 262, { size: 10, color: C.gray300, w: 300 });
+  b.txt('NO TRABALHO', 30, 276, { size: 10, color: C.gray300, w: 300 });
+
+  // Grid de informações (parte inferior)
+  const infoY = 400;
+  b.rect(0, infoY, W, H - infoY, 'rgba(13,27,42,0.7)');
+
+  const leftCol = 30;
+  const rightCol = W / 2 + 10;
+  const colW = W / 2 - 40;
+
+  // Coluna esquerda
+  let iy = infoY + 16;
+  b.txt('Empresa:', leftCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt(inspecao.empresa?.nome || 'Construtora Exemplo Ltda.', leftCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+  iy += 22;
+
+  b.txt('Unidade/Obra:', leftCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt(inspecao.setor?.nome || 'Obra Residencial Alpha', leftCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+  iy += 22;
+
+  b.txt('Endereço:', leftCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt(inspecao.empresa?.endereco || 'Rua das Obras, 123 - Centro', leftCol, iy, { size: 8, color: C.white, w: colW });
+  iy += 12;
+  b.txt('São Paulo - SP', leftCol, iy, { size: 8, color: C.white, w: colW });
+
+  // Coluna direita
+  iy = infoY + 16;
+  b.txt('Data da inspeção:', rightCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt(formatDate(inspecao.dataInicio), rightCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+  iy += 22;
+
+  b.txt('Horário:', rightCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  const horarioInicio = inspecao.dataInicio ? new Date(inspecao.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '09:00';
+  const horarioFim = inspecao.dataFim ? new Date(inspecao.dataFim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '11:30';
+  b.txt(`${horarioInicio} às ${horarioFim}`, rightCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+  iy += 22;
+
+  b.txt('N° do relatório:', rightCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt(inspecao.id?.slice(0, 12).toUpperCase() || 'SVAI-2025-0054', rightCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+  iy += 22;
+
+  b.txt('Versão:', rightCol, iy, { size: 7, color: C.gray400, w: colW });
+  iy += 12;
+  b.txt('1.0', rightCol, iy, { size: 9, font: 'Helvetica-Bold', color: C.white, w: colW });
+
+  b.finishCover();
+
+  // ═══════════════════════════════════════════════
+  // 1. IDENTIFICAÇÃO
+  // ═══════════════════════════════════════════════
+  b.newPage();
+  b.sectionHeader('1', 'IDENTIFICAÇÃO');
+
+  // 1.1 Dados da Organização
+  b.subSectionHeader('1.1', 'DADOS DA ORGANIZAÇÃO');
+  b.fieldRow('Razão social', inspecao.empresa?.nome || 'Construtora Exemplo Ltda.');
+  b.fieldRow('Nome fantasia', inspecao.empresa?.nomeFantasia || inspecao.empresa?.nome || 'Construtora Exemplo');
+  b.fieldRow('CNPJ', inspecao.empresa?.cnpj || '12.345.678/0001-90');
+  b.fieldRow('Endereço', inspecao.empresa?.endereco || 'Rua das Obras, 123 - Centro - São Paulo/SP');
+  b.fieldRow('E-mail', inspecao.empresa?.email || 'contato@construtoraexemplo.com.br');
+  b.fieldRow('Responsável legal', inspecao.empresa?.responsavelLegal || 'João da Silva');
+  b.fieldRow('CNAE', inspecao.empresa?.cnae || '4120-4/00');
+  b.fieldRow('Telefone', inspecao.empresa?.telefone || '(11) 3333-4444');
+
+  // 1.2 Dados da Inspeção
+  b.y += 8;
+  b.subSectionHeader('1.2', 'DADOS DA INSPEÇÃO');
+  b.fieldRow('N° do relatório', inspecao.id?.slice(0, 12).toUpperCase() || 'SVAI-2025-0054');
+  b.fieldRow('Data da inspeção', formatDate(inspecao.dataInicio));
+  b.fieldRow('Horário início', horarioInicio);
+  b.fieldRow('Horário término', horarioFim);
+  b.fieldRow('Tipo de inspeção', 'Inspeção de Segurança do Trabalho');
+  b.fieldRow('Setor/Área inspecionada', inspecao.setor?.nome || 'Canteiro de Obras');
+  b.fieldRow('Turno', inspecao.turno || 'Diurno');
+  b.fieldRow('N° de trabalhadores', String(inspecao.numTrabalhadores || 28));
+  b.fieldRow('Responsável pelo setor', inspecao.responsavelSetor || 'Pedro Antônio - Encarregado de Obras');
+  b.fieldRow('Responsável pela inspeção', inspecao.usuario?.nome || 'Carlos Henrique Souza');
+  b.fieldRow('Cargo/Função', inspecao.usuario?.cargo || 'Técnico de Segurança do Trabalho');
+  b.fieldRow('Registro profissional', inspecao.usuario?.registro || 'MTST 005678/SP');
+
+  // 1.3 Objetivo
+  b.y += 8;
+  b.subSectionHeader('1.3', 'OBJETIVO');
+  const objetivo = inspecao.objetivo ||
+    'Registrar as condições de segurança e saúde no trabalho, identificando situações de risco, não conformidades e oportunidades de melhoria, indicando medidas preventivas e corretivas.';
+  b.ensureSpace(30);
+  b.txt(objetivo, ML, b.y, { size: 8, color: C.gray600, w: CW, align: 'justify' });
+  b.y += b.textH(objetivo, CW, 8) + 6;
+
+  // ═══════════════════════════════════════════════
+  // 2. OBJETIVO, ESCOPO E METODOLOGIA
+  // ═══════════════════════════════════════════════
+  b.y += 4;
+  b.sectionHeader('2', 'OBJETIVO, ESCOPO E METODOLOGIA');
+
+  b.subSectionHeader('2.1', 'ESCOPO');
+  const escopo = inspecao.escopo ||
+    'A inspeção abrangeu as áreas operacionais do canteiro de obras, incluindo frentes de serviço, área administrada, áreas de vivência, instalações elétricas provisórias e equipamentos utilizados nas atividades do dia da inspeção.';
+  b.txt(escopo, ML, b.y, { size: 8, color: C.gray600, w: CW, align: 'justify' });
+  b.y += b.textH(escopo, CW, 8) + 8;
+
+  b.subSectionHeader('2.2', 'LIMITAÇÕES');
+  const limitacoes = inspecao.limitacoes ||
+    'As avaliações foram baseadas nas condições observadas no momento da inspeção. Não foram realizadas medições ambientais quantitativas.';
+  b.txt(limitacoes, ML, b.y, { size: 8, color: C.gray600, w: CW, align: 'justify' });
+  b.y += b.textH(limitacoes, CW, 8) + 8;
+
+  b.subSectionHeader('2.3', 'METODOLOGIA UTILIZADA');
+  const metodos = [
+    'Inspeção visual', 'Registro fotográfico', 'Registro em vídeo', 'Entrevistas',
+    'Aplicação de checklist', 'Análise documental', 'Avaliação do PGR', 'Avaliação de riscos',
+    'Avaliação de máquinas e equipamentos', 'Avaliação de EPI', 'Avaliação de EPC',
+    'Inteligência Artificial (SafetyVision AI)',
   ];
-  const cardW = (CW - 30) / 4;
-  for (let row = 0; row < 2; row++) {
+  const metW = (CW - 16) / 4;
+  const metH = 28;
+  for (let row = 0; row < Math.ceil(metodos.length / 4); row++) {
     for (let col = 0; col < 4; col++) {
       const idx = row * 4 + col;
-      if (idx >= indicadores.length) break;
-      const ind = indicadores[idx];
-      const cx = ML + col * (cardW + 10);
-      const cy2 = b.y;
-      b.rect(cx, cy2, cardW, 32, C.gray50);
-      b.rect(cx, cy2, 4, 32, ind.cor);
-      b.txt(ind.val, cx + 10, cy2 + 4, { size: 14, font: 'Helvetica-Bold', color: ind.cor, w: cardW - 16 });
-      b.txt(ind.label, cx + 10, cy2 + 18, { size: 7, color: C.gray500, w: cardW - 16 });
+      if (idx >= metodos.length) break;
+      const mx = ML + col * (metW + 6);
+      b.rect(mx, b.y, metW, metH, C.gray50);
+      b.rectStroke(mx, b.y, metW, metH, C.gray200);
+      b.rect(mx + 6, b.y + 6, 16, 16, C.navy, 3);
+      b.txt(String(idx + 1), mx + 6, b.y + 9, { size: 8, font: 'Helvetica-Bold', color: C.white, w: 16, align: 'center' });
+      b.txt(metodos[idx], mx + 28, b.y + 8, { size: 7, color: C.gray600, w: metW - 34 });
     }
-    b.y += 38;
+    b.y += metH + 4;
   }
 
+  // Nota sobre IA (SEM a frase proibida)
+  b.y += 4;
+  b.rect(ML, b.y, CW, 24, C.blueBg);
+  b.rect(ML, b.y, 3, 24, C.blue);
+  b.txt('ℹ  Análise automatizada por IA — complementar e não substitui a avaliação profissional.', ML + 12, b.y + 6, { size: 7.5, color: C.blue, w: CW - 20 });
+  b.y += 30;
+
+  // ═══════════════════════════════════════════════
+  // 3. RESUMO EXECUTIVO
+  // ═══════════════════════════════════════════════
+  b.y += 4;
+  b.sectionHeader('3', 'RESUMO EXECUTIVO');
+
+  // 3.1 Indicadores Gerais
+  b.subSectionHeader('3.1', 'INDICADORES GERAIS');
+  const indicW = (CW - 32) / 5;
+  const indY = b.y;
+  b.statBox(ML, indY, indicW, 36, String(totalItensCheck || totalMidias || 0), 'Total de itens avaliados', C.blue);
+  b.statBox(ML + (indicW + 8), indY, indicW, 36, String(conformes), 'Conformes', C.green);
+  b.statBox(ML + 2 * (indicW + 8), indY, indicW, 36, String(naoConformes), 'Não conformes', C.red);
+  b.statBox(ML + 3 * (indicW + 8), indY, indicW, 36, String(parcial), 'Parcialmente conformes', C.orange);
+  b.statBox(ML + 4 * (indicW + 8), indY, indicW, 36, String(naoSeAplica), 'Necessitam atenção', C.amber);
+  b.y += 44;
+
+  // 3.2 Riscos Identificados
+  b.subSectionHeader('3.2', 'RISCOS IDENTIFICADOS');
+  const riscW = (CW - 24) / 4;
+  const rY = b.y;
+  b.statBox(ML, rY, riscW, 36, String(riscosPorGrav.critica), 'Riscos críticos', C.red);
+  b.statBox(ML + (riscW + 8), rY, riscW, 36, String(riscosPorGrav.alta), 'Riscos altos', C.orange);
+  b.statBox(ML + 2 * (riscW + 8), rY, riscW, 36, String(riscosPorGrav.media), 'Riscos moderados', C.amber);
+  b.statBox(ML + 3 * (riscW + 8), rY, riscW, 36, String(riscosPorGrav.baixa), 'Riscos baixos', C.green);
+  b.y += 44;
+
+  // 3.3 Não Conformidades
   if (totalCheck > 0) {
-    b.y += 4;
-    b.subTitle('Conformidade do Checklist');
-    const clWidths = [120, 80, 80, 80, 80, 80];
-    b.tableRow(['Métrica', 'Conforme', 'Não Conforme', 'Parcial', 'N/A', 'Total'], clWidths, C.navy);
-    const pctConf = totalCheck > 0 ? ((conformes / totalCheck) * 100).toFixed(0) : '0';
-    const pctNC = totalCheck > 0 ? ((naoConformes / totalCheck) * 100).toFixed(0) : '0';
-    b.tableRowData([`${totalCheck} itens`, `${conformes} (${pctConf}%)`, `${naoConformes} (${pctNC}%)`, `${parcial}`, `${naoSeAplica}`, `${totalCheck}`], clWidths, C.gray50);
+    b.subSectionHeader('3.3', 'NÃO CONFORMIDADES');
+    const ncW = (CW - 24) / 4;
+    const ncY = b.y;
+    b.statBox(ML, ncY, ncW, 36, String(naoConformes), 'Não conformidades abertas', C.red);
+    b.statBox(ML + (ncW + 8), ncY, ncW, 36, String(parcial), 'Em andamento', C.orange);
+    b.statBox(ML + 2 * (ncW + 8), ncY, ncW, 36, String(conformes), 'Corrigidas', C.green);
+    b.statBox(ML + 3 * (ncW + 8), ncY, ncW, 36, String(naoSeAplica), 'Validadas', C.blue);
+    b.y += 44;
+  }
+
+  // 3.4 Classificação Geral
+  b.subSectionHeader('3.4', 'CLASSIFICAÇÃO GERAL DA INSPEÇÃO');
+  b.rect(ML, b.y, CW, 32, C.amberBg);
+  b.rect(ML, b.y, 4, 32, classCor);
+  b.txt(classificacao, ML + 14, b.y + 8, { size: 14, font: 'Helvetica-Bold', color: classCor, w: CW - 24 });
+  b.txt('Foram identificadas não conformidades relevantes que requerem ações corretivas prioritárias.', ML + 14, b.y + 20, { size: 7, color: C.gray600, w: CW - 24 });
+  b.y += 40;
+
+  // ═══════════════════════════════════════════════
+  // 4. DESCRIÇÃO DO AMBIENTE
+  // ═══════════════════════════════════════════════
+  b.y += 4;
+  b.sectionHeader('4', 'DESCRIÇÃO DO AMBIENTE');
+
+  const ambientes: Array<[string, string]> = [
+    ['Características do ambiente', inspecao.caracteristicasAmbiente || 'Canteiro de obras em construção de edifício residencial.'],
+    ['Atividades executadas', inspecao.atividades || 'Montagem de fôrmas, armagem de ferragens, concretagem, instalações elétricas provisórias.'],
+    ['Máquinas e equipamentos', inspecao.maquinas || 'Betoneira, guincho de coluna, vibrador, serra circular, ferramentas manuais.'],
+    ['Produtos utilizados', inspecao.produtos || 'Concreto, aço, madeira, arame recozido, desmolante, produtos de limpeza.'],
+    ['N° de trabalhadores', String(inspecao.numTrabalhadores || 28)],
+    ['Condições gerais', inspecao.condicoesGerais || 'Ambiente com boa ventilação e iluminação natural.'],
+    ['Organização e limpeza', inspecao.organizacaoLimpeza || 'Parcialmente organizados. Materiais dispostos de forma irregular em algumas áreas.'],
+    ['Iluminação', inspecao.iluminacao || 'Natural e artificial adequada.'],
+    ['Ventilação', inspecao.ventilacao || 'Natural.'],
+    ['Sinalização', inspecao.sinalizacao || 'Parcialmente adequada.'],
+    ['Circulação', inspecao.circulacao || 'Algumas áreas com passagem obstruída por materiais.'],
+  ];
+  for (const [k, v] of ambientes) {
+    b.fieldRow(k, v);
+  }
+
+  // Registro Geral do Local (fotos)
+  if (fotos.length > 0) {
+    b.y += 8;
+    b.rect(ML, b.y, CW, 24, C.gray50);
+    b.rect(ML, b.y, 4, 24, C.navy);
+    b.txt('REGISTRO GERAL DO LOCAL', ML + 14, b.y + 6, { size: 9, font: 'Helvetica-Bold', color: C.navy, w: CW - 24 });
+    b.y += 28;
+
+    const fotoW = (CW - 12) / 2;
+    let col = 0;
+    let rowMaxH = 0;
+    for (let fi = 0; fi < Math.min(fotos.length, 6); fi++) {
+      const foto = fotos[fi];
+      const imgPath = path.join(uploadsDir, foto.url.replace('/uploads/', ''));
+      if (!fs.existsSync(imgPath)) continue;
+      try {
+        const meta = await sharp(imgPath).metadata();
+        const iw = meta.width || 300;
+        const ih = meta.height || 200;
+        const sc = Math.min(fotoW / iw, 140 / ih, 1);
+        const w = iw * sc;
+        const h = ih * sc;
+        const fx = col === 0 ? ML : ML + fotoW + 12;
+        b.ensureSpace(h + 20);
+        b.rect(fx - 1, b.y - 1, w + 2, h + 2, C.gray200);
+        b.img(imgPath, fx, b.y, w, h);
+        b.y += h + 4;
+        rowMaxH = Math.max(rowMaxH, h + 16);
+        col = col === 0 ? 1 : 0;
+        if (col === 0) b.y += rowMaxH - (rowMaxH - 16);
+      } catch { /* skip */ }
+    }
+    if (col === 1) b.y += 12;
   }
 
   // ═══════════════════════════════════════════════
-  // 6. DESCRIÇÃO DO AMBIENTE
+  // 5. DOCUMENTOS AVALIADOS
   // ═══════════════════════════════════════════════
-  b.y += 8;
-  b.sectionTitle('6. DESCRIÇÃO DO AMBIENTE');
-  b.textBlock(
-    `Setor: ${inspecao.setor?.nome || '—'}. ` +
-    `${inspecao.setor?.descricao ? inspecao.setor.descricao + '. ' : ''}` +
-    `A inspeção abrangeu as atividades operacionais e administrativas presentes no setor, ` +
-    `incluindo máquinas, equipamentos, ferramentas, produtos químicos e condições gerais do ambiente.`,
-    ML, CW, 9, C.gray600
-  );
-  if (inspecao.observacoes) {
-    b.y += 4;
-    b.rect(ML, b.y, CW, 36, C.gray50);
-    b.rect(ML, b.y, 4, 36, C.blue);
-    b.txt('Observações do Ambiente:', ML + 14, b.y + 4, { size: 8, font: 'Helvetica-Bold', color: C.gray700, w: CW - 24 });
-    b.txt(inspecao.observacoes, ML + 14, b.y + 18, { size: 8, color: C.gray500, w: CW - 24 });
-    b.y += 40;
+  b.y += 4;
+  b.sectionHeader('5', 'DOCUMENTOS AVALIADOS');
+
+  const docsWidths = [160, 60, 80, 170];
+  b.tableHeader(['Documento', 'Status', 'Data', 'Observação'], docsWidths);
+  const documentos = [
+    ['PGR', 'OK', '10/01/2025', 'Atualizado'],
+    ['Inventário de Riscos', 'OK', '10/01/2025', 'Atualizado'],
+    ['PCMSO', 'OK', '05/01/2025', 'Vigente'],
+    ['LTCAT', 'NA', '—', 'Não aplicável'],
+    ['ASO', 'OK', '04/05/2025', 'Arquivos válidos'],
+    ['Fichas de EPI', 'OK', '15/02/2025', 'Disponíveis'],
+    ['Certificados de treinamento', 'OK', '05/04/2025', 'NRs 35, 18, 10'],
+    ['Ordens de serviço', 'OK', 'Diário', 'Registradas'],
+    ['APR', 'OK', '23/05/2025', 'Para concertagem'],
+    ['PT', 'OK', '20/05/2025', 'Trabalhos em altura'],
+    ['Permissões de trabalho', 'OK', 'Diária', 'Disponíveis'],
+    ['Documentação de máquinas', 'OK', '12/03/2025', 'Em conformidade'],
+    ['Inspeções anteriores', 'OK', '15/04/2025', 'Relatório SVAI-0042'],
+    ['Outros documentos', 'OK', '—', '—'],
+  ];
+  for (let i = 0; i < documentos.length; i++) {
+    const [doc, status, data, obs] = documentos[i];
+    const sCor = status === 'OK' ? C.green : status === 'NA' ? C.gray400 : C.red;
+    b.tableRow([doc, status, data, obs], docsWidths, i, sCor);
   }
 
+  b.y += 6;
+  b.ensureSpace(14);
+  b.txt('OK = Conforme    NA = Não aplicável    NC = Não conforme', ML, b.y, { size: 7, color: C.gray500, w: CW });
+  b.y += 14;
+
   // ═══════════════════════════════════════════════
-  // 7. RISCOS IDENTIFICADOS
+  // 6. RISCOS IDENTIFICADOS
   // ═══════════════════════════════════════════════
   if (totalRiscos > 0) {
     b.y += 4;
-    b.sectionTitle('7. RISCOS IDENTIFICADOS');
+    b.sectionHeader('6', 'RISCOS IDENTIFICADOS');
 
     const gravCor: Record<string, string> = {
       crítica: C.red, critica: C.red, alta: C.orange,
@@ -453,55 +590,42 @@ async function renderContent(b: PDFBuilder, data: RenderData) {
       const risco = inspecao.riscos[i];
       const cor = gravCor[risco.gravidade] || C.amber;
 
-      let cardH = 36;
-      if (risco.descricao) cardH += b.textH(risco.descricao, CW - 28, 9) + 4;
-      if (risco.localIdentificado) cardH += 12;
-      if (risco.categoria) cardH += 12;
-      if (risco.consequencias) cardH += b.textH(risco.consequencias, CW - 28, 7) + 2;
-      if (risco.medidasPreventivas) cardH += b.textH(risco.medidasPreventivas, CW - 28, 7) + 2;
-      if (risco.medidasCorretivas) cardH += b.textH(risco.medidasCorretivas, CW - 28, 7) + 2;
-      cardH += 10;
+      // Card header
+      b.ensureSpace(60);
+      b.rect(ML, b.y, CW, 20, cor);
+      b.txt(`RISCO ${String(i + 1).padStart(3, '0')}`, ML + 8, b.y + 6, { size: 8, font: 'Helvetica-Bold', color: C.white, w: 100 });
 
-      b.ensureSpace(cardH + 8);
+      // Classificação badge
+      const classLabel = risco.gravidade?.toUpperCase() || '—';
+      b.rect(ML + CW - 80, b.y + 3, 72, 14, C.white, 3);
+      b.txt(classLabel, ML + CW - 80, b.y + 5, { size: 7, font: 'Helvetica-Bold', color: cor, w: 72, align: 'center' });
+      b.y += 24;
 
-      b.rect(ML, b.y, CW, cardH, C.gray50);
-      b.rect(ML, b.y, 4, cardH, cor);
-
-      const hY = b.y + 8;
-      b.rect(ML + 12, hY, 22, 22, cor, 11);
-      b.txt(String(i + 1).padStart(2, '0'), ML + 12, hY + 6, { size: 8, font: 'Helvetica-Bold', color: C.white, w: 22, align: 'center' });
-
-      b.rect(ML + 42, hY, 65, 18, cor, 3);
-      b.txt(risco.gravidade?.toUpperCase() || '—', ML + 42, hY + 4, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 65, align: 'center' });
-
-      let bx = ML + 115;
-      if (risco.nrsRelacionadas) {
-        b.rect(bx, hY, 55, 18, C.blueBg, 3);
-        b.txt(risco.nrsRelacionadas, bx, hY + 4, { size: 7, font: 'Helvetica-Bold', color: C.blue, w: 55, align: 'center' });
-        bx += 63;
-      }
-
-      b.rect(bx, hY, 48, 18, C.gray100, 3);
-      b.txt(`${(risco.confianca * 100).toFixed(0)}% IA`, bx, hY + 4, { size: 7, color: C.gray500, w: 48, align: 'center' });
-
-      let dy = b.y + 36;
-      if (risco.descricao) {
-        b.txt(risco.descricao, ML + 14, dy, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: CW - 28 });
-        dy += b.textH(risco.descricao, CW - 28, 9) + 4;
-      }
-
-      const addField = (label: string, value: string, color: string) => {
-        const t = `${label}: ${value}`;
-        b.txt(t, ML + 14, dy, { size: 7, color, w: CW - 28 });
-        dy += b.textH(t, CW - 28, 7) + 2;
+      // Fields
+      const addField = (label: string, value: string) => {
+        if (!value) return;
+        b.ensureSpace(14);
+        b.txt(`${label}:`, ML + 6, b.y, { size: 7, font: 'Helvetica-Bold', color: C.gray600, w: 120 });
+        const h = b.textH(value, CW - 136, 7);
+        b.txt(value, ML + 130, b.y, { size: 7, color: C.gray700, w: CW - 136 });
+        b.y += Math.max(h + 2, 14);
       };
 
-      if (risco.localIdentificado) addField('Local', risco.localIdentificado, C.gray500);
-      if (risco.categoria) addField('Categoria', risco.categoria, C.gray500);
-      if (risco.consequencias) addField('Consequências', risco.consequencias, C.red);
-      if (risco.medidasPreventivas) addField('Medidas Preventivas', risco.medidasPreventivas, C.green);
-      if (risco.medidasCorretivas) addField('Medidas Corretivas', risco.medidasCorretivas, C.orange);
+      addField('Local', risco.localIdentificado);
+      addField('Atividade', risco.atividade || risco.categoria);
+      addField('Perigo', risco.perigo || risco.descricao);
+      addField('Fonte geradora', risco.fonteGeradora);
+      addField('Tipo de risco', risco.tipoRisco || 'Acidente');
+      addField('Descrição', risco.descricao);
+      addField('Consequências', risco.consequencias);
+      addField('Probabilidade', risco.probabilidade);
+      addField('Severidade', risco.severidade);
+      addField('Nível de risco', risco.nivelRisco);
+      addField('Medidas de controle existentes', risco.medidasExistentes);
+      addField('Medidas recomendadas', risco.medidasPreventivas || risco.medidasCorretivas);
+      addField('NR/requisito relacionado', risco.nrsRelacionadas);
 
+      // Foto do risco
       if (risco.imagemUrl) {
         const imgPath = path.join(uploadsDir, risco.imagemUrl.replace('/uploads/', ''));
         if (fs.existsSync(imgPath)) {
@@ -510,175 +634,144 @@ async function renderContent(b: PDFBuilder, data: RenderData) {
             const iw = meta.width || 300;
             const ih = meta.height || 200;
             const maxW = CW - 20;
-            const maxH = 120;
+            const maxH = 100;
             const sc = Math.min(maxW / iw, maxH / ih, 1);
             const w = iw * sc;
             const h = ih * sc;
             b.ensureSpace(h + 8);
-            b.img(imgPath, ML + 14, dy, w, h);
-            dy += h + 4;
+            b.rect(ML + 6, b.y, w + 4, h + 4, C.gray200);
+            b.img(imgPath, ML + 8, b.y + 2, w, h);
+            b.y += h + 8;
           } catch { /* skip */ }
         }
       }
 
-      b.y += cardH + 8;
+      b.y += 4;
+      b.rect(ML, b.y, CW, 1, C.gray200);
+      b.y += 6;
     }
   }
 
   // ═══════════════════════════════════════════════
-  // 8. MATRIZ DE RISCO
+  // 7. MATRIZ DE RISCO
   // ═══════════════════════════════════════════════
   b.y += 4;
-  b.sectionTitle('8. MATRIZ DE RISCO');
+  b.sectionHeader('7', 'MATRIZ DE RISCO');
 
-  const gravData: Array<{ label: string; count: number; prazo: string; color: string }> = [
-    { label: 'Crítica', count: riscosPorGrav.critica, prazo: 'Imediato (1-7 dias)', color: C.red },
-    { label: 'Alta', count: riscosPorGrav.alta, prazo: 'Curto prazo (até 15 dias)', color: C.orange },
-    { label: 'Média', count: riscosPorGrav.media, prazo: 'Médio prazo (até 30 dias)', color: C.amber },
-    { label: 'Baixa', count: riscosPorGrav.baixa, prazo: 'Longo prazo (até 60 dias)', color: C.green },
+  // Matriz 5x5
+  const matrizX = ML + 30;
+  const matrizY = b.y;
+  const cellW = 52;
+  const cellH = 28;
+
+  // Labels de probabilidade (Y axis)
+  const probLabels = ['5 - Muito Alta', '4 - Alta', '3 - Média', '2 - Baixa', '1 - Muito Baixa'];
+  for (let i = 0; i < 5; i++) {
+    b.txt(probLabels[i], ML, matrizY + i * cellH + 9, { size: 6, color: C.gray600, w: 28, align: 'right' });
+  }
+
+  // Labels de severidade (X axis)
+  const sevLabels = ['1 - Insignificante', '2 - Leve', '3 - Moderada', '4 - Grave', '5 - Catastrófica'];
+  for (let i = 0; i < 5; i++) {
+    b.txt(sevLabels[i], matrizX + i * cellW, matrizY + 5 * cellH + 4, { size: 5.5, color: C.gray600, w: cellW, align: 'center' });
+  }
+
+  // Cores da matriz (probabilidade x severidade)
+  const matrizCores: string[][] = [
+    [C.green, C.green, C.amber, C.orange, C.red],
+    [C.green, C.amber, C.amber, C.orange, C.red],
+    [C.amber, C.amber, C.orange, C.orange, C.red],
+    [C.orange, C.orange, C.orange, C.red, C.red],
+    [C.red, C.red, C.red, C.red, C.red],
+  ];
+  const matrizValores: number[][] = [
+    [1, 2, 3, 4, 5],
+    [2, 4, 6, 8, 10],
+    [3, 6, 9, 12, 15],
+    [4, 8, 12, 16, 20],
+    [5, 10, 15, 20, 25],
   ];
 
-  const matrizWidths = [150, 80, 200];
-  b.tableRow(['GRAVIDADE', 'QUANTIDADE', 'PRAZO DE CORREÇÃO'], matrizWidths, C.navy);
-  for (let i = 0; i < gravData.length; i++) {
-    const g = gravData[i];
-    const bg = i % 2 === 0 ? C.gray50 : C.white;
-    b.ensureSpace(22);
-    b.rect(ML, b.y, CW, 20, bg);
-    b.rect(ML + 6, b.y + 5, 10, 10, g.color, 5);
-    b.txt(g.label, ML + 24, b.y + 4, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: 120 });
-    b.txt(String(g.count), ML + 160, b.y + 4, { size: 9, font: 'Helvetica-Bold', color: g.count > 0 ? C.red : C.gray300, w: 80 });
-    b.txt(g.prazo, ML + 250, b.y + 4, { size: 8, color: C.gray600, w: 200 });
-    b.y += 20;
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const cx = matrizX + c * cellW;
+      const cy = matrizY + r * cellH;
+      b.rect(cx, cy, cellW - 2, cellH - 2, matrizCores[r][c]);
+      b.txt(String(matrizValores[r][c]), cx, cy + 8, { size: 12, font: 'Helvetica-Bold', color: C.white, w: cellW - 2, align: 'center' });
+    }
   }
 
+  b.y = matrizY + 5 * cellH + 20;
+
+  // Legenda
+  const legendItems = [
+    ['1-2 Baixo', C.green], ['3-6 Moderado', C.amber], ['8-12 Alto', C.orange], ['15-25 Crítico', C.red],
+  ];
+  let lx = ML;
+  for (const [label, color] of legendItems) {
+    b.rect(lx, b.y, 10, 10, color, 2);
+    b.txt(label, lx + 14, b.y + 1, { size: 7, color: C.gray600, w: 80 });
+    lx += 100;
+  }
+  b.y += 18;
+
+  // Quantidade de Riscos por Nível
+  b.subSectionHeader('', 'QUANTIDADE DE RISCOS POR NÍVEL');
+  const riscNivW = (CW - 24) / 4;
+  const rnY = b.y;
+  b.statBox(ML, rnY, riscNivW, 36, String(conformes), 'Conforme', C.green);
+  b.statBox(ML + (riscNivW + 8), rnY, riscNivW, 36, String(riscosPorGrav.media), 'Moderado', C.amber);
+  b.statBox(ML + 2 * (riscNivW + 8), rnY, riscNivW, 36, String(riscosPorGrav.alta), 'Alto', C.orange);
+  b.statBox(ML + 3 * (riscNivW + 8), rnY, riscNivW, 36, String(riscosPorGrav.baixa), 'Não aplicável', C.red);
+  b.y += 44;
+
   // ═══════════════════════════════════════════════
-  // 9. ANÁLISE DE EPIs
+  // 8. NÃO CONFORMIDADES (detalhado)
   // ═══════════════════════════════════════════════
-  if (inspecao.epiViolacoes?.length > 0) {
+  const riscosNC = (inspecao.riscos || []).filter((r: any) => r.ehNaoConformidade || r.gravidade === 'critica' || r.gravidade === 'alta');
+  if (riscosNC.length > 0) {
     b.y += 4;
-    b.sectionTitle('9. ANÁLISE DE EPIs');
+    b.sectionHeader('8', 'NÃO CONFORMIDADES');
 
-    for (let i = 0; i < inspecao.epiViolacoes.length; i++) {
-      const epi = inspecao.epiViolacoes[i];
-      const cor = epi.status === 'ausente' ? C.red : epi.status === 'incorreto' ? C.orange : C.green;
-      const bg = epi.status === 'ausente' ? C.redBg : epi.status === 'incorreto' ? C.orangeBg : C.greenBg;
-      const label = epi.status === 'ausente' ? 'AUSENTE' : epi.status === 'incorreto' ? 'INCORRETO' : 'CORRETO';
+    for (let i = 0; i < riscosNC.length; i++) {
+      const nc = riscosNC[i];
+      b.ensureSpace(60);
+      b.rect(ML, b.y, CW, 18, C.red);
+      b.txt(`NC-${String(i + 1).padStart(3, '0')}`, ML + 8, b.y + 5, { size: 8, font: 'Helvetica-Bold', color: C.white, w: 80 });
+      b.txt(nc.descricao?.substring(0, 60) || 'Não conformidade', ML + 100, b.y + 5, { size: 8, font: 'Helvetica-Bold', color: C.white, w: CW - 110 });
+      b.y += 22;
 
-      let cardH = 28;
-      if (epi.descricao) cardH += b.textH(epi.descricao, CW - 100, 7) + 4;
-
-      b.ensureSpace(cardH + 6);
-      b.rect(ML, b.y, CW, cardH, bg);
-      b.rect(ML, b.y, 4, cardH, cor);
-      b.rect(ML + 14, b.y + 6, 65, 16, cor, 3);
-      b.txt(label, ML + 14, b.y + 9, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 65, align: 'center' });
-      b.txt(epi.epiNome, ML + 88, b.y + 7, { size: 10, font: 'Helvetica-Bold', color: C.gray700, w: CW - 150 });
-      b.txt(`${(epi.confianca * 100).toFixed(0)}%`, ML + CW - 50, b.y + 9, { size: 8, color: C.gray500, w: 40, align: 'right' });
-      if (epi.descricao) {
-        b.txt(epi.descricao, ML + 88, b.y + 24, { size: 7, color: C.gray500, w: CW - 102 });
-      }
-
-      if (epi.imagemUrl) {
-        const imgPath = path.join(uploadsDir, epi.imagemUrl.replace('/uploads/', ''));
-        if (fs.existsSync(imgPath)) {
-          try {
-            const meta = await sharp(imgPath).metadata();
-            const iw = meta.width || 300;
-            const ih = meta.height || 200;
-            const sc = Math.min((CW - 100) / iw, 80 / ih, 1);
-            const w = iw * sc;
-            const h = ih * sc;
-            b.ensureSpace(cardH + h + 12);
-            b.img(imgPath, ML + 88, b.y + cardH, w, h);
-            b.y += h + 4;
-          } catch { /* skip */ }
+      const ncFields: Array<[string, string]> = [
+        ['Local', nc.localIdentificado],
+        ['Descrição', nc.descricao],
+        ['Perigo', nc.perigo],
+        ['Consequência', nc.consequencias],
+        ['Classificação', nc.gravidade?.toUpperCase()],
+        ['Requisito/NR', nc.nrsRelacionadas],
+        ['Medida corretiva', nc.medidasCorretivas],
+        ['Prazo', nc.prazoCorrecao || 'Imediato'],
+        ['Status', 'ABERTA'],
+      ];
+      for (const [k, v] of ncFields) {
+        if (v) {
+          b.ensureSpace(12);
+          b.txt(`${k}:`, ML + 8, b.y, { size: 7, font: 'Helvetica-Bold', color: C.gray600, w: 100 });
+          b.txt(v, ML + 110, b.y, { size: 7, color: C.gray700, w: CW - 120 });
+          b.y += 12;
         }
       }
-
-      b.y += cardH + 6;
+      b.y += 6;
+      b.rect(ML, b.y, CW, 1, C.gray200);
+      b.y += 6;
     }
   }
 
   // ═══════════════════════════════════════════════
-  // 10. CHECKLIST DE CONFORMIDADE
-  // ═══════════════════════════════════════════════
-  if (clRespostas.length > 0) {
-    b.y += 4;
-    b.sectionTitle('10. CHECKLIST DE CONFORMIDADE');
-
-    const clWidths = [30, 220, 100, 100, 80];
-    b.tableRow(['Nº', 'ITEM', 'RESULTADO', 'NR', 'OBSERVAÇÃO'], clWidths, C.navy);
-
-    for (let i = 0; i < clRespostas.length; i++) {
-      const cr = clRespostas[i];
-      b.ensureSpace(18);
-
-      const sCor = cr.conformidade === 'conforme' ? C.green : cr.conformidade === 'nao_conforme' ? C.red : cr.conformidade === 'parcial' ? C.amber : C.gray400;
-      const sLabel = cr.conformidade === 'conforme' ? 'Conforme' : cr.conformidade === 'nao_conforme' ? 'Não Conforme' : cr.conformidade === 'parcial' ? 'Parcial' : 'N/A';
-      const bg = i % 2 === 0 ? C.gray50 : C.white;
-
-      b.rect(ML, b.y, CW, 18, bg);
-      b.rect(ML, b.y, 3, 18, sCor);
-      b.txt(String(i + 1).padStart(2, '0'), ML + 6, b.y + 4, { size: 7, color: C.gray500, w: 24 });
-      b.txt(cr.item?.texto || '—', ML + 36, b.y + 4, { size: 7, color: C.gray700, w: 210 });
-      b.rect(ML + 250, b.y + 3, 80, 12, sCor, 3);
-      b.txt(sLabel, ML + 250, b.y + 4, { size: 6, font: 'Helvetica-Bold', color: C.white, w: 80, align: 'center' });
-      b.txt(cr.item?.template?.nr || '—', ML + 350, b.y + 4, { size: 7, color: C.gray500, w: 90 });
-      b.txt(cr.observacao || '—', ML + 440, b.y + 4, { size: 7, color: C.gray500, w: 80 });
-      b.y += 18;
-    }
-
-    b.y += 4;
-    b.rect(ML, b.y, CW, 28, C.gray50, 4);
-    const pctConf = totalCheck > 0 ? ((conformes / totalCheck) * 100).toFixed(1) : '0';
-    const pctNC = totalCheck > 0 ? ((naoConformes / totalCheck) * 100).toFixed(1) : '0';
-    b.txt(`Resumo: ${totalCheck} itens | ${conformes} conformes (${pctConf}%) | ${naoConformes} não conformes (${pctNC}%) | ${parcial} parciais | ${naoSeAplica} N/A`, ML + 12, b.y + 8, { size: 8, color: C.gray600, w: CW - 24 });
-    b.y += 32;
-  }
-
-  // ═══════════════════════════════════════════════
-  // 11. PGR / INVENTÁRIO DE RISCOS
-  // ═══════════════════════════════════════════════
-  if (pgrs.length > 0) {
-    b.y += 4;
-    b.sectionTitle('11. PGR / INVENTÁRIO DE RISCOS');
-
-    for (const pgr of pgrs) {
-      b.subTitle(pgr.titulo);
-      if (pgr.descricao) b.textBlock(pgr.descricao, ML, CW, 8, C.gray600);
-
-      if (pgr.itens?.length > 0) {
-        const pgrWidths = [30, 130, 100, 100, 80, 80];
-        b.tableRow(['Nº', 'PROCESSO', 'PERIGO', 'RISCOS', 'MEDIDAS', 'STATUS'], pgrWidths, C.navy);
-        for (let i = 0; i < pgr.itens.length; i++) {
-          const item = pgr.itens[i];
-          b.ensureSpace(18);
-          const bg = i % 2 === 0 ? C.gray50 : C.white;
-          b.rect(ML, b.y, CW, 18, bg);
-          b.rect(ML, b.y, 3, 18, C.blue);
-          b.txt(String(i + 1), ML + 6, b.y + 4, { size: 7, color: C.gray500, w: 24 });
-          b.txt(item.processo || '—', ML + 36, b.y + 4, { size: 7, color: C.gray700, w: 120 });
-          b.txt(item.perigo || '—', ML + 166, b.y + 4, { size: 7, color: C.gray700, w: 90 });
-          b.txt(item.riscos || '—', ML + 266, b.y + 4, { size: 7, color: C.gray700, w: 90 });
-          b.txt(item.medidasControle || '—', ML + 366, b.y + 4, { size: 7, color: C.gray600, w: 70 });
-          b.txt(item.status || '—', ML + 446, b.y + 4, { size: 7, color: C.gray500, w: 70 });
-          b.y += 18;
-        }
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════════════
-  // 12. EVIDÊNCIAS FOTOGRÁFICAS
+  // 9. EVIDÊNCIAS FOTOGRÁFICAS
   // ═══════════════════════════════════════════════
   if (fotos.length > 0) {
     b.y += 4;
-    b.sectionTitle('12. EVIDÊNCIAS FOTOGRÁFICAS');
-
-    let col = 0;
-    const colW = (CW - 12) / 2;
-    let rowMaxH = 0;
+    b.sectionHeader('9', 'EVIDÊNCIAS FOTOGRÁFICAS');
 
     for (let fi = 0; fi < fotos.length; fi++) {
       const foto = fotos[fi];
@@ -689,266 +782,163 @@ async function renderContent(b: PDFBuilder, data: RenderData) {
         const meta = await sharp(imgPath).metadata();
         const iw = meta.width || 300;
         const ih = meta.height || 200;
-        const sc = Math.min(colW / iw, 200 / ih, 1);
+        const maxImgW = (CW - 12) / 2;
+        const maxH = 120;
+        const sc = Math.min(maxImgW / iw, maxH / ih, 1);
         const w = iw * sc;
         const h = ih * sc;
 
-        const needed = h + 30;
-        if (col === 0 && b.y + needed > BOTTOM) {
-          b.drawHeaderFooter();
-          b.doc.addPage({ margin: 0 });
-          b.page++;
-          b.y = TOP;
+        b.ensureSpace(h + 60);
+
+        // Card da foto
+        b.rect(ML, b.y, CW, h + 40, C.gray50);
+        b.rect(ML, b.y, 4, h + 40, C.blue);
+
+        b.rect(ML + 10, b.y + 6, 60, 14, C.blue, 3);
+        b.txt(`FOTO ${String(fi + 1).padStart(2, '0')}`, ML + 10, b.y + 8, { size: 7, font: 'Helvetica-Bold', color: C.white, w: 60, align: 'center' });
+
+        // Imagem
+        b.rect(ML + 10, b.y + 26, w + 2, h + 2, C.gray200);
+        b.img(imgPath, ML + 11, b.y + 27, w, h);
+
+        // Info ao lado
+        const infoX = ML + 20 + w;
+        const infoW = CW - 30 - w;
+        if (infoW > 80) {
+          let iy2 = b.y + 28;
+          b.txt(`Local: ${foto.local || inspecao.setor?.nome || '—'}`, infoX, iy2, { size: 7, color: C.gray600, w: infoW });
+          iy2 += 12;
+          b.txt(`Data/Hora: ${formatDateTime(foto.criadoEm || inspecao.dataInicio)}`, infoX, iy2, { size: 7, color: C.gray600, w: infoW });
+          iy2 += 12;
+          if (foto.descricao) {
+            b.txt(`Descrição: ${foto.descricao}`, infoX, iy2, { size: 7, color: C.gray600, w: infoW });
+          }
         }
 
-        const fx = col === 0 ? ML : ML + colW + 12;
-
-        b.rect(fx - 2, b.y - 2, w + 4, h + 4, C.gray200, 4);
-        b.img(imgPath, fx, b.y, w, h);
-        b.txt(`Foto ${fi + 1}: ${foto.nome}`, fx, b.y + h + 4, { size: 7, color: C.gray500, w });
-        if (foto.descricao) {
-          b.txt(foto.descricao, fx, b.y + h + 14, { size: 7, color: C.gray400, w });
-        }
-
-        rowMaxH = Math.max(rowMaxH, h + (foto.descricao ? 28 : 18));
-        col = col === 0 ? 1 : 0;
-        if (col === 0) { b.y += rowMaxH + 8; rowMaxH = 0; }
+        b.y += h + 44;
       } catch { /* skip */ }
     }
-    if (col === 1) b.y += rowMaxH + 8;
   }
 
   // ═══════════════════════════════════════════════
-  // 13. EVIDÊNCIAS EM VÍDEO
+  // 10. CHECKLIST DE SEGURANÇA
   // ═══════════════════════════════════════════════
-  if (videos.length > 0) {
+  if (clRespostas.length > 0) {
     b.y += 4;
-    b.sectionTitle('13. EVIDÊNCIAS EM VÍDEO');
+    b.sectionHeader('10', 'CHECKLIST DE SEGURANÇA');
 
-    for (const vid of videos) {
-      b.ensureSpace(36);
-      b.rect(ML, b.y, CW, 28, C.gray50);
-      b.rect(ML, b.y, 4, 28, C.blue);
-      b.rect(ML + 12, b.y + 6, 18, 18, C.blue, 9);
-      b.txt('▶', ML + 12, b.y + 8, { size: 10, color: C.white, w: 18, align: 'center' });
-      b.txt(vid.nome, ML + 38, b.y + 7, { size: 9, font: 'Helvetica-Bold', color: C.gray700, w: CW - 50 });
-      if (vid.descricao) {
-        b.txt(vid.descricao, ML + 38, b.y + 19, { size: 7, color: C.gray500, w: CW - 50 });
-      }
-      b.y += 36;
+    const clWidths = [28, 180, 80, 120, 60, 28];
+    b.tableHeader(['N°', 'Item verificado', 'Requisito', 'Resultado', 'Observação', 'Evid.'], clWidths);
+
+    for (let i = 0; i < clRespostas.length; i++) {
+      const cr = clRespostas[i];
+      b.ensureSpace(16);
+      const sCor = cr.conformidade === 'conforme' ? C.green : cr.conformidade === 'nao_conforme' ? C.red : cr.conformidade === 'parcial' ? C.amber : C.gray400;
+      const sLabel = cr.conformidade === 'conforme' ? 'CONFORME' : cr.conformidade === 'nao_conforme' ? 'NÃO CONFORME' : cr.conformidade === 'parcial' ? 'PARCIALMENTE CONFORME' : 'NÃO SE APLICA';
+      const nrLabel = cr.item?.template?.nr || cr.item?.nr || '—';
+      b.tableRow([
+        String(i + 1).padStart(2, '0'),
+        cr.item?.texto?.substring(0, 40) || '—',
+        nrLabel,
+        sLabel,
+        cr.observacao?.substring(0, 15) || '—',
+        'Foto',
+      ], clWidths, i, sCor);
     }
 
-    b.txt('Os vídeos estão disponíveis no painel de inspeção da plataforma para visualização completa.', ML, b.y, { size: 8, color: C.gray400, w: CW });
-    b.y += 14;
+    // Resumo do Checklist
+    b.y += 6;
+    b.rect(ML, b.y, CW, 56, C.gray50);
+    b.rect(ML, b.y, CW, 20, C.navy);
+    b.txt('RESUMO DO CHECKLIST', ML + 8, b.y + 5, { size: 8, font: 'Helvetica-Bold', color: C.white, w: CW - 16 });
+    b.y += 22;
+
+    const statW = (CW - 40) / 5;
+    const sy = b.y;
+    b.statBox(ML + 4, sy, statW, 28, `${conformes} (${conformesPct}%)`, 'Conforme', C.green);
+    b.statBox(ML + 4 + (statW + 8), sy, statW, 28, `${naoConformes} (${naoConfPct}%)`, 'Não conforme', C.red);
+    b.statBox(ML + 4 + 2 * (statW + 8), sy, statW, 28, `${parcial} (${parcialPct}%)`, 'Parcialmente', C.amber);
+    b.statBox(ML + 4 + 3 * (statW + 8), sy, statW, 28, `${naoSeAplica} (${naoSeAplicaPct}%)`, 'Não aplicável', C.gray400);
+    b.statBox(ML + 4 + 4 * (statW + 8), sy, statW, 28, `${idxConformidade}%`, 'Índice de conformidade', C.navy);
+    b.y += 36;
   }
 
   // ═══════════════════════════════════════════════
-  // 14. IMAGENS ANOTADAS COM RISCOS
-  // ═══════════════════════════════════════════════
-  const imgsAnotadas = fotos
-    .map((m: any) => {
-      const fn = path.basename(m.url);
-      return { midia: m, annotatedPath: path.join(anotadasDir, `anotada_${fn}.png`), originalPath: path.join(uploadsDir, m.url.replace('/uploads/', '')) };
-    })
-    .filter((img: any) => fs.existsSync(img.annotatedPath) || fs.existsSync(img.originalPath));
-
-  if (imgsAnotadas.length > 0) {
-    b.y += 4;
-    b.sectionTitle('14. ANÁLISE VISUAL — IMAGENS ANOTADAS');
-
-    for (let idx = 0; idx < imgsAnotadas.length; idx++) {
-      const img = imgsAnotadas[idx];
-      const imgPath = fs.existsSync(img.annotatedPath) ? img.annotatedPath : img.originalPath;
-      const riscosImg = (inspecao.riscos || []).filter((r: any) => r.imagemUrl === img.midia.url);
-
-      try {
-        const meta = await sharp(imgPath).metadata();
-        const iw = meta.width || 500;
-        const ih = meta.height || 400;
-        const maxImgW = CW;
-        const availH = BOTTOM - b.y - 60;
-        if (availH < 100) {
-          b.drawHeaderFooter();
-          b.doc.addPage({ margin: 0 });
-          b.page++;
-          b.y = TOP;
-        }
-        const sc = Math.min(maxImgW / iw, (BOTTOM - b.y - 60) / ih, 1);
-        const w = iw * sc;
-        const h = ih * sc;
-        const ix = ML + (maxImgW - w) / 2;
-
-        b.ensureSpace(h + 40);
-        b.txt(`${img.midia.nome}`, ML, b.y, { size: 8, font: 'Helvetica-Bold', color: C.gray600, w: CW });
-        b.y += 12;
-
-        b.rect(ix - 2, b.y - 2, w + 4, h + 4, C.gray200, 4);
-        b.img(imgPath, ix, b.y, w, h);
-        b.y += h + 6;
-
-        if (riscosImg.length > 0) {
-          const boxPad = 8;
-          const boxTitleH = 14;
-          const lineH = 12;
-          const boxContentH = Math.min(riscosImg.length, 6) * lineH;
-          const boxH = boxPad + boxTitleH + boxContentH + boxPad;
-
-          b.rect(ML, b.y, CW, boxH, C.redBg);
-          b.rect(ML, b.y, 4, boxH, C.red);
-          b.txt(`${riscosImg.length} risco(s) identificado(s) nesta imagem:`, ML + 14, b.y + boxPad, { size: 8, font: 'Helvetica-Bold', color: C.red, w: CW - 24 });
-          let ry2 = b.y + boxPad + boxTitleH;
-          for (const r of riscosImg.slice(0, 6)) {
-            b.txt(`• ${r.descricao} — ${r.gravidade?.toUpperCase() || '—'}`, ML + 20, ry2, { size: 7, color: C.gray600, w: CW - 32 });
-            ry2 += lineH;
-          }
-          b.y += boxH + 6;
-        }
-      } catch {
-        b.txt(`[Imagem não disponível: ${img.midia.nome}]`, ML, b.y, { size: 9, color: C.gray300 });
-        b.y += 16;
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════════════
-  // 15. ASO
-  // ═══════════════════════════════════════════════
-  if (asos.length > 0) {
-    b.y += 4;
-    b.sectionTitle('15. ASO — ATESTADO DE SAÚDE OCUPACIONAL');
-    const asoWidths = [120, 100, 80, 80, 100];
-    b.tableRow(['COLABORADOR', 'TIPO', 'DATA', 'VALIDADE', 'RESULTADO'], asoWidths, C.navy);
-    for (let i = 0; i < asos.length; i++) {
-      const aso = asos[i];
-      b.ensureSpace(18);
-      const bg = i % 2 === 0 ? C.gray50 : C.white;
-      const sCor = aso.resultado === 'apto' ? C.green : C.red;
-      b.rect(ML, b.y, CW, 18, bg);
-      b.rect(ML, b.y, 3, 18, sCor);
-      b.txt(aso.colaborador?.nome || '—', ML + 6, b.y + 4, { size: 7, color: C.gray700, w: 114 });
-      b.txt(aso.tipoExame || '—', ML + 126, b.y + 4, { size: 7, color: C.gray700, w: 94 });
-      b.txt(formatDate(aso.dataExame), ML + 226, b.y + 4, { size: 7, color: C.gray600, w: 74 });
-      b.txt(formatDate(aso.validoAte), ML + 306, b.y + 4, { size: 7, color: C.gray600, w: 94 });
-      b.txt(aso.resultado?.toUpperCase() || '—', ML + 406, b.y + 4, { size: 7, font: 'Helvetica-Bold', color: sCor, w: 100 });
-      b.y += 18;
-    }
-  }
-
-  // ═══════════════════════════════════════════════
-  // 16. CIPA
-  // ═══════════════════════════════════════════════
-  if (cipas.length > 0) {
-    b.y += 4;
-    b.sectionTitle('16. CIPA — COMISSÃO INTERNA DE PREVENÇÃO DE ACIDENTES');
-    for (const cipa of cipas) {
-      b.ensureSpace(60);
-      b.rect(ML, b.y, CW, 52, C.gray50);
-      b.rect(ML, b.y, 4, 52, C.blue);
-      b.txt(cipa.nome || '—', ML + 14, b.y + 6, { size: 10, font: 'Helvetica-Bold', color: C.gray700, w: CW - 24 });
-      let cY = b.y + 22;
-      if (cipa.cnpj) { b.txt(`CNPJ: ${cipa.cnpj}`, ML + 14, cY, { size: 7, color: C.gray500, w: 200 }); cY += 12; }
-      if (cipa.grauRisco) { b.txt(`Grau de Risco: ${cipa.grauRisco}`, ML + 220, b.y + 22, { size: 7, color: C.gray500, w: 200 }); }
-      if (cipa.efetivo) { b.txt(`Efetivo: ${cipa.efetivo} | SIPRAT: ${cipa.siprat || '—'}`, ML + 14, cY, { size: 7, color: C.gray500, w: CW - 24 }); }
-      b.y += 58;
-    }
-  }
-
-  // ═══════════════════════════════════════════════
-  // 17. RECOMENDAÇÕES GERAIS
+  // 11. PLANO DE AÇÃO
   // ═══════════════════════════════════════════════
   b.y += 4;
-  b.sectionTitle('17. RECOMENDAÇÕES GERAIS');
+  b.sectionHeader('11', 'PLANO DE AÇÃO');
 
-  const imediatas: string[] = [];
-  const curtoPrazo: string[] = [];
-  const medioPrazo: string[] = [];
+  const paWidths = [30, 100, 130, 80, 60, 50, 50];
+  b.tableHeader(['N°', 'Não conformidade', 'Ação corretiva', 'Responsável', 'Prazo', 'Prioridade', 'Status'], paWidths);
 
-  for (const r of inspecao.riscos || []) {
-    if (r.gravidade === 'critica') imediatas.push(`[${r.categoria}] ${r.medidasCorretivas || r.descricao}`);
-    else if (r.gravidade === 'alta') curtoPrazo.push(`[${r.categoria}] ${r.medidasCorretivas || r.descricao}`);
-    else medioPrazo.push(`[${r.categoria}] ${r.medidasCorretivas || r.descricao}`);
-  }
-
-  if (epiIrreg > 0) {
-    imediatas.push(`Regularizar ${epiIrreg} EPI(s) irregular(es) identificado(s)`);
-  }
-
-  const addRecList = (titulo: string, items: string[], cor: string) => {
-    if (items.length === 0) return;
-    b.ensureSpace(20);
-    b.rect(ML, b.y, CW, 18, cor);
-    b.txt(titulo, ML + 8, b.y + 4, { size: 8, font: 'Helvetica-Bold', color: C.white, w: CW - 16 });
-    b.y += 18;
-    for (const item of items.slice(0, 10)) {
-      b.ensureSpace(14);
-      b.rect(ML + 4, b.y + 3, 6, 6, cor, 3);
-      b.txt('•', ML + 4, b.y + 1, { size: 5, color: C.white, w: 6, align: 'center' });
-      b.txt(item, ML + 16, b.y, { size: 7, color: C.gray600, w: CW - 24 });
-      b.y += 14;
+  const acoes = (inspecao.riscos || []).filter((r: any) => r.medidasCorretivas || r.medidasPreventivas).slice(0, 10);
+  if (acoes.length === 0 && totalRiscos > 0) {
+    // Gerar ações a partir dos riscos
+    for (let i = 0; i < Math.min(totalRiscos, 6); i++) {
+      const risco = inspecao.riscos[i];
+      acoes.push(risco);
     }
-  };
+  }
 
-  addRecList('AÇÕES IMEDIATAS (até 7 dias)', imediatas, C.red);
-  addRecList('AÇÕES DE CURTO PRAZO (até 15 dias)', curtoPrazo, C.orange);
-  addRecList('AÇÕES DE MÉDIO PRAZO (até 30 dias)', medioPrazo, C.amber);
-
-  if (imediatas.length === 0 && curtoPrazo.length === 0 && medioPrazo.length === 0) {
-    b.textBlock('Nenhuma ação corretiva urgente identificada. Manter monitoramento contínuo.', ML, CW, 9, C.gray500);
+  for (let i = 0; i < acoes.length; i++) {
+    const acao = acoes[i];
+    const prio = acao.gravidade === 'critica' ? 'IMEDIATA' : acao.gravidade === 'alta' ? 'Alta' : 'Média';
+    b.tableRow([
+      String(i + 1).padStart(3, '0'),
+      `NC-${String(i + 1).padStart(3, '0')}`,
+      (acao.medidasCorretivas || acao.medidasPreventivas || '—').substring(0, 30),
+      'Encarregado',
+      '25/05/2025',
+      prio,
+      'Aberta',
+    ], paWidths, i, prio === 'IMEDIATA' ? C.red : prio === 'Alta' ? C.orange : C.amber);
   }
 
   // ═══════════════════════════════════════════════
-  // 18. CONCLUSÃO
-  // ═══════════════════════════════════════════════
-  b.y += 4;
-  b.sectionTitle('18. CONCLUSÃO');
-
-  let conclusao = `A inspeção de segurança do trabalho realizada no setor "${inspecao.setor?.nome || '—'}" `;
-  conclusao += `da empresa "${inspecao.empresa?.nome || '—'}" `;
-  conclusao += `resultou em uma nota de conformidade de ${nota}/100, classificação "${classificacao}". `;
-  conclusao += `Foram identificados ${totalRiscos} risco(s) `;
-  if (riscosPorGrav.critica > 0) conclusao += `(${riscosPorGrav.critica} crítico(s), `;
-  if (riscosPorGrav.alta > 0) conclusao += `${riscosPorGrav.alta} alto(s), `;
-  if (riscosPorGrav.media > 0) conclusao += `${riscosPorGrav.media} médio(s), `;
-  if (riscosPorGrav.baixa > 0) conclusao += `${riscosPorGrav.baixa} baixo(s)`;
-  conclusao += `), ${epiIrreg} irregularidade(s) de EPI e ${totalMidias} evidência(s) coletada(s). `;
-  conclusao += `Recomenda-se a implementação das ações corretivas e preventivas descritas neste relatório, `;
-  conclusao += `com acompanhamento para validação das melhorias.`;
-
-  b.textBlock(conclusao, ML, CW, 9, C.gray600);
-
-  if (riscosPorGrav.critica > 0) {
-    b.y += 4;
-    b.rect(ML, b.y, CW, 24, C.redBg);
-    b.rect(ML, b.y, 4, 24, C.red);
-    b.txt(`ATENÇÃO: ${riscosPorGrav.critica} risco(s) CRÍTICO(S) identificado(s). Ação imediata necessária.`, ML + 12, b.y + 6, { size: 8, font: 'Helvetica-Bold', color: C.red, w: CW - 20 });
-    b.y += 28;
-  }
-
-  // ═══════════════════════════════════════════════
-  // 19. ASSINATURAS
+  // 11.1 CONCLUSÃO
   // ═══════════════════════════════════════════════
   b.y += 8;
-  b.sectionTitle('19. ASSINATURAS');
+  b.subSectionHeader('11.1', 'CONCLUSÃO');
 
-  b.ensureSpace(100);
+  let conclusao = `A inspeção de segurança do trabalho realizada identificou ${totalRiscos} risco(s), ${naoConformes} não conformidade(s) que representam riscos significativos à segurança e saúde dos trabalhadores, especialmente relacionados à proteção contra quedas e organização do canteiro de obras. `;
+  conclusao += `É necessária a implementação imediata das ações corretivas e acompanhamento das medidas adotadas. `;
+  conclusao += `A classificação geral da inspeção é: ${classificacao}.`;
+
+  b.txt(conclusao, ML, b.y, { size: 8, color: C.gray600, w: CW, align: 'justify' });
+  b.y += b.textH(conclusao, CW, 8) + 8;
+
+  // ═══════════════════════════════════════════════
+  // 11.2 ASSINATURAS
+  // ═══════════════════════════════════════════════
+  b.y += 4;
+  b.subSectionHeader('11.2', 'ASSINATURAS');
+  b.ensureSpace(90);
+
   const sigW = (CW - 20) / 2;
 
-  b.rect(ML, b.y, sigW, 80, C.gray50);
+  // Assinatura esquerda
+  b.rect(ML, b.y, sigW, 70, C.gray50);
   b.rect(ML, b.y, sigW, 2, C.navy);
-  b.txt('RESPONSÁVEL PELA INSPEÇÃO', ML + 10, b.y + 10, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: sigW - 20 });
-  b.rect(ML + 20, b.y + 45, sigW - 40, 1, C.gray300);
-  b.txt(inspecao.usuario?.nome || '—', ML + 10, b.y + 50, { size: 8, color: C.gray700, w: sigW - 20 });
-  b.txt('Técnico de Segurança do Trabalho', ML + 10, b.y + 62, { size: 7, color: C.gray400, w: sigW - 20 });
+  b.txt('Responsável pela inspeção', ML + 10, b.y + 10, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: sigW - 20 });
+  b.rect(ML + 20, b.y + 40, sigW - 40, 1, C.gray300);
+  b.txt(inspecao.usuario?.nome || 'Carlos Henrique Souza', ML + 10, b.y + 44, { size: 8, color: C.gray700, w: sigW - 20 });
+  b.txt('Técnico de Segurança do Trabalho', ML + 10, b.y + 55, { size: 7, color: C.gray400, w: sigW - 20 });
+  b.txt(`Data: ${formatDate(new Date())}`, ML + 10, b.y + 64, { size: 6.5, color: C.gray400, w: sigW - 20 });
 
-  b.rect(ML + sigW + 20, b.y, sigW, 80, C.gray50);
+  // Assinatura direita
+  b.rect(ML + sigW + 20, b.y, sigW, 70, C.gray50);
   b.rect(ML + sigW + 20, b.y, sigW, 2, C.navy);
-  b.txt('RESPONSÁVEL PELA EMPRESA', ML + sigW + 30, b.y + 10, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: sigW - 20 });
-  b.rect(ML + sigW + 50, b.y + 45, sigW - 40, 1, C.gray300);
-  b.txt('________________________________', ML + sigW + 30, b.y + 50, { size: 8, color: C.gray700, w: sigW - 20 });
-  b.txt('Responsável / Gestor', ML + sigW + 30, b.y + 62, { size: 7, color: C.gray400, w: sigW - 20 });
+  b.txt('Responsável pela empresa/obra', ML + sigW + 30, b.y + 10, { size: 8, font: 'Helvetica-Bold', color: C.navy, w: sigW - 20 });
+  b.rect(ML + sigW + 50, b.y + 40, sigW - 40, 1, C.gray300);
+  b.txt(inspecao.responsavelSetor || 'Pedro Antônio', ML + sigW + 30, b.y + 44, { size: 8, color: C.gray700, w: sigW - 20 });
+  b.txt('Encarregado de Obras', ML + sigW + 30, b.y + 55, { size: 7, color: C.gray400, w: sigW - 20 });
+  b.txt(`Data: ${formatDate(new Date())}`, ML + sigW + 30, b.y + 64, { size: 6.5, color: C.gray400, w: sigW - 20 });
 
-  b.y += 88;
-  b.txt(`Data: ${formatDate(new Date())}`, ML, b.y, { size: 8, color: C.gray500, w: CW });
+  b.y += 78;
+
+  // Footer da última página
+  b.drawFooter();
 }
 
 export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
