@@ -26,21 +26,29 @@ export default function RelatoriosTecnico() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const baixar = async (r: Relatorio) => {
+  const getAuthHeaders = () => {
     const token = localStorage.getItem('sv_token');
-    const res = await fetch(`/api/relatorios/${r.id}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return alert('Erro ao baixar');
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const baixar = async (r: Relatorio) => {
+    try {
+      const res = await fetch(`/api/relatorios/${r.id}/download`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Erro ao baixar');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch {
+      toast.error('Erro ao baixar PDF');
+    }
   };
 
   const excluir = async (r: Relatorio) => {
@@ -50,54 +58,90 @@ export default function RelatoriosTecnico() {
   };
 
   const compartilharWhatsApp = async (r: Relatorio) => {
-    const token = localStorage.getItem('sv_token');
-    const res = await fetch(`/api/relatorios/${r.id}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const blob = await res.blob();
-    const file = new File([blob], r.nomeArquivo, { type: 'application/pdf' });
     const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
 
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-    } else {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'application/pdf': blob })
-        ]);
-        toast.success('PDF copiado! Cole (Ctrl+V) no WhatsApp.', { duration: 6000 });
-      } catch {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = r.nomeArquivo;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-        toast.success('PDF baixado! Anexe no WhatsApp.', { duration: 6000 });
+    // Abre WhatsApp IMEDIATAMENTE (síncrono) para não ser bloqueado
+    const link = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    const win = window.open('', '_blank');
+
+    try {
+      const res = await fetch(`/api/relatorios/${r.id}/download`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Erro');
+      const blob = await res.blob();
+
+      // Tenta Web Share API (mobile)
+      if (navigator.share && navigator.canShare?.({ files: [new File([blob], r.nomeArquivo, { type: 'application/pdf' })] })) {
+        if (win) win.close();
+        await navigator.share({
+          title: 'Relatório SafetyVision',
+          text: texto,
+          files: [new File([blob], r.nomeArquivo, { type: 'application/pdf' })],
+        });
+        return;
       }
-      window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+
+      // Fallback: baixa o PDF e mantém WhatsApp aberto
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      if (win) {
+        win.location.href = link;
+      }
+      toast.success('PDF baixado! Anexe no WhatsApp.', { duration: 5000 });
+    } catch {
+      if (win) win.location.href = link;
+      toast.error('Erro ao baixar PDF. Envie manualmente.');
     }
   };
 
   const compartilharEmail = async (r: Relatorio) => {
-    const token = localStorage.getItem('sv_token');
-    const res = await fetch(`/api/relatorios/${r.id}/download`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    a.remove();
     const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
-    const corpo = encodeURIComponent(`Segue em anexo o relatório de inspeção de segurança.\n\nEmpresa: ${r.empresaNome}\nSetor: ${r.setorNome}\nNota: ${r.notaConformidade ?? '---'}/100`);
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    const corpo = encodeURIComponent(
+      `Segue em anexo o relatório de inspeção de segurança do trabalho.\n\n` +
+      `Empresa: ${r.empresaNome}\nSetor: ${r.setorNome}\n` +
+      `Nota de Conformidade: ${r.notaConformidade ?? '---'}/100\n` +
+      `Data: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}\n\n` +
+      `Atenciosamente,\nSafetyVision AI`
+    );
+
+    // Abre Gmail IMEDIATAMENTE (síncrono)
+    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
+    const win = window.open('', '_blank');
+
+    try {
+      const res = await fetch(`/api/relatorios/${r.id}/download`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Erro');
+      const blob = await res.blob();
+
+      // Baixa o PDF
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nomeArquivo;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      // Redireciona janela para Gmail
+      if (win) {
+        win.location.href = gmailLink;
+      }
+      toast.success('PDF baixado! Anexe no Gmail.', { duration: 5000 });
+    } catch {
+      if (win) win.location.href = gmailLink;
+      toast.error('Erro ao baixar PDF. Envie manualmente.');
+    }
   };
 
   const formatarTamanho = (bytes: number) => {
