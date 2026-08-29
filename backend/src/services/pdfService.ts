@@ -1,4 +1,5 @@
-import { chromium } from 'playwright';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import path from 'path';
 import fs from 'fs';
 
@@ -428,22 +429,20 @@ export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
   const templateData = buildTemplateData(data);
   html = renderTemplate(html, templateData);
 
-  // Salva HTML temporário
-  const tmpHtml = path.join(__dirname, '../../tmp_relatorio.html');
-  fs.writeFileSync(tmpHtml, html, 'utf-8');
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
 
   try {
-    const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    await page.goto('file:///' + tmpHtml.replace(/\\/g, '/'), { waitUntil: 'networkidle' });
-
-    // Espera imagens carregarem
-    await page.waitForTimeout(1000);
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
 
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      preferCSSPageSize: true,
       displayHeaderFooter: true,
       margin: { top: '14mm', right: '12mm', bottom: '16mm', left: '12mm' },
       headerTemplate: `
@@ -460,10 +459,8 @@ export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
       `,
     });
 
-    await browser.close();
     return Buffer.from(pdfBuffer);
   } finally {
-    // Limpa arquivo temporário
-    try { fs.unlinkSync(tmpHtml); } catch {}
+    await browser.close();
   }
 }
