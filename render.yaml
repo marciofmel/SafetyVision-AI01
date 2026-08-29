@@ -5,7 +5,7 @@ services:
     plan: free
     buildCommand: |
       cd frontend && npm install && npm run build && cp -r dist/* ../backend/frontend/
-      cd ../backend && npm install && npx playwright install chromium --with-deps && npx prisma generate && npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npx tsc && mkdir -p dist/templates && cp src/templates/relatorio.html dist/templates/
+      cd ../backend && npm install && npx playwright install chromium && npx prisma generate && npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npx tsc
     startCommand: cd backend && node dist/index.js
     envVars:
       - key: NODE_ENV

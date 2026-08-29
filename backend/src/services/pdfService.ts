@@ -387,9 +387,43 @@ function buildTemplateData(data: RenderData) {
 // Gera PDF via Playwright
 // ═══════════════════════════════════════════════
 
+function findTemplate(): string {
+  const candidates = [
+    path.join(__dirname, '../templates/relatorio.html'),
+    path.join(__dirname, '../../templates/relatorio.html'),
+    path.join(__dirname, '../../../src/templates/relatorio.html'),
+    path.join(process.cwd(), 'src/templates/relatorio.html'),
+    path.join(process.cwd(), 'dist/templates/relatorio.html'),
+    path.join(process.cwd(), 'backend/src/templates/relatorio.html'),
+    path.join(process.cwd(), 'backend/dist/templates/relatorio.html'),
+    '/opt/render/project/src/backend/src/templates/relatorio.html',
+    '/opt/render/project/src/backend/dist/templates/relatorio.html',
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {}
+  }
+  throw new Error(`Template relatorio.html não encontrado. Tentativas: ${candidates.join(', ')}`);
+}
+
+let _cachedTemplate: string | null = null;
+
+function getTemplate(): string {
+  if (_cachedTemplate) return _cachedTemplate;
+  try {
+    const templatePath = findTemplate();
+    _cachedTemplate = fs.readFileSync(templatePath, 'utf-8');
+    console.log(`[pdfService] Template carregado de: ${templatePath}`);
+  } catch (err) {
+    console.error('[pdfService] ERRO ao carregar template:', err);
+    throw err;
+  }
+  return _cachedTemplate!;
+}
+
 export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
-  const templatePath = path.join(__dirname, '../templates/relatorio.html');
-  let html = fs.readFileSync(templatePath, 'utf-8');
+  let html = getTemplate();
 
   const templateData = buildTemplateData(data);
   html = renderTemplate(html, templateData);

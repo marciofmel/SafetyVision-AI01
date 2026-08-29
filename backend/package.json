@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "npx playwright install chromium --with-deps || true",
     "dev": "ts-node-dev --respawn src/index.ts",
-    "build": "tsc && mkdir -p dist/templates && cp src/templates/relatorio.html dist/templates/",
+    "build": "tsc",
     "start": "node dist/index.js",
     "db:push": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts"
