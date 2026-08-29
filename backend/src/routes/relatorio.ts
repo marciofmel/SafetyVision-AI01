@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
-import { generateRelatorioPDF } from '../services/pdfGenerator';
+import { generateRelatorioPDF } from '../services/pdfService';
 
 const router = Router();
 
