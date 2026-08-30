@@ -92,18 +92,15 @@ export default function RelatoriosTecnico() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF enviado para o app!', { id: `wa-${r.id}` });
+        toast.success('PDF compartilhado com sucesso!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
-    const pdfUrl = URL.createObjectURL(blob);
-    window.open(pdfUrl, '_blank');
-    if (win) win.location.href = waLink;
-    else window.open(waLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no WhatsApp', { id: `wa-${r.id}` });
+    if (win) win.close();
+    toast.error('Seu navegador não suporta envio direto de PDF. Abra no celular para compartilhar com PDF anexado.', { id: `wa-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 
@@ -127,18 +124,15 @@ export default function RelatoriosTecnico() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
-        toast.success('PDF enviado para o app!', { id: `em-${r.id}` });
+        toast.success('PDF compartilhado com sucesso!', { id: `em-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
-    const pdfUrl2 = URL.createObjectURL(blob);
-    window.open(pdfUrl2, '_blank');
-    if (win) win.location.href = gmailLink;
-    else window.open(gmailLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no Gmail', { id: `em-${r.id}` });
+    if (win) win.close();
+    toast.error('Seu navegador não suporta envio direto de PDF. Abra no celular para compartilhar com PDF anexado.', { id: `em-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 

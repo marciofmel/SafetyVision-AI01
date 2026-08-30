@@ -53,18 +53,15 @@ export default function Relatorio() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF enviado para o app!', { id: 'share-wa' });
+        toast.success('PDF compartilhado com sucesso!', { id: 'share-wa' });
         setSharingType(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
-    const pdfUrl = URL.createObjectURL(blob);
-    window.open(pdfUrl, '_blank');
-    if (win) win.location.href = waLink;
-    else window.open(waLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no WhatsApp', { id: 'share-wa' });
+    if (win) win.close();
+    toast.error('Seu navegador não suporta compartilhamento de PDF. Abra no celular.', { id: 'share-wa', duration: 6000 });
     setSharingType(null);
   };
 
@@ -89,18 +86,15 @@ export default function Relatorio() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
-        toast.success('PDF enviado para o app!', { id: 'share-em' });
+        toast.success('PDF compartilhado com sucesso!', { id: 'share-em' });
         setSharingType(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
-    const pdfUrl2 = URL.createObjectURL(blob);
-    window.open(pdfUrl2, '_blank');
-    if (win) win.location.href = gmailLink;
-    else window.open(gmailLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no Gmail', { id: 'share-em' });
+    if (win) win.close();
+    toast.error('Seu navegador não suporta compartilhamento de PDF. Abra no celular.', { id: 'share-em', duration: 6000 });
     setSharingType(null);
   };
 
