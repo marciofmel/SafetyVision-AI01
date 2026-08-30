@@ -30,19 +30,24 @@ export default function Relatorio() {
   };
 
   const shareWhatsApp = async () => {
+    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
+    const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    const win = window.open('', '_blank');
+    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo WhatsApp...</p>'); } catch {} }
     setSharingType('wa');
     toast.loading('Preparando PDF...', { id: 'share-wa' });
     const blob = await getPdfBlob();
     if (!blob) {
+      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-wa' });
       setSharingType(null);
       return;
     }
-    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
     const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
+        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
         toast.success('Enviado para o app!', { id: 'share-wa' });
         setSharingType(null);
@@ -51,16 +56,23 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+    if (win) win.location.href = waLink;
+    else window.open(waLink, '_blank');
     toast.success('Abrindo WhatsApp...', { id: 'share-wa' });
     setSharingType(null);
   };
 
   const shareEmail = async () => {
+    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
+    const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
+    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
+    const win = window.open('', '_blank');
+    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo Gmail...</p>'); } catch {} }
     setSharingType('em');
     toast.loading('Preparando PDF...', { id: 'share-em' });
     const blob = await getPdfBlob();
     if (!blob) {
+      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-em' });
       setSharingType(null);
       return;
@@ -69,6 +81,7 @@ export default function Relatorio() {
     const file = new File([blob], fileName, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
+        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
         toast.success('Enviado para o app!', { id: 'share-em' });
         setSharingType(null);
@@ -77,9 +90,8 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
-    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
-    const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    if (win) win.location.href = gmailLink;
+    else window.open(gmailLink, '_blank');
     toast.success('Abrindo Gmail...', { id: 'share-em' });
     setSharingType(null);
   };
