@@ -435,44 +435,51 @@ function getTemplate(): string {
   return _cachedTemplate!;
 }
 
+let _pdfLock: Promise<void> | null = null;
+
 export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
-  let html = getTemplate();
-
-  const templateData = buildTemplateData(data);
-  html = renderTemplate(html, templateData);
-
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
-  });
+  while (_pdfLock) await _pdfLock;
+  let release!: () => void;
+  _pdfLock = new Promise<void>(r => { release = r; });
 
   try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    let html = getTemplate();
+    const templateData = buildTemplateData(data);
+    html = renderTemplate(html, templateData);
 
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      margin: { top: '14mm', right: '12mm', bottom: '16mm', left: '12mm' },
-      headerTemplate: `
-        <div style="width:100%;font-family:Arial;font-size:7px;color:#6b7280;padding:0 12mm">
-          SafetyVision AI
-          <span style="float:right">Relatório de Inspeção SST</span>
-        </div>
-      `,
-      footerTemplate: `
-        <div style="width:100%;font-family:Arial;font-size:7px;color:#6b7280;padding:0 12mm">
-          <span>SafetyVision AI | Relatório de Inspeção SST</span>
-          <span style="float:right">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
-        </div>
-      `,
-    });
-
-    return Buffer.from(pdfBuffer);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let browser: any = null;
+      try {
+        browser = await puppeteer.launch({
+          args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        });
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+        const pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          displayHeaderFooter: true,
+          margin: { top: '14mm', right: '12mm', bottom: '16mm', left: '12mm' },
+          headerTemplate: `<div style="width:100%;font-family:Arial;font-size:7px;color:#6b7280;padding:0 12mm">SafetyVision AI<span style="float:right">Relatório de Inspeção SST</span></div>`,
+          footerTemplate: `<div style="width:100%;font-family:Arial;font-size:7px;color:#6b7280;padding:0 12mm"><span>SafetyVision AI | Relatório de Inspeção SST</span><span style="float:right">Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>`,
+        });
+        return Buffer.from(pdfBuffer);
+      } catch (e: any) {
+        if (e.message?.includes('ETXTBSY') && attempt < 2) {
+          await new Promise(r => setTimeout(r, 900 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      } finally {
+        if (browser) try { await browser.close(); } catch {}
+      }
+    }
+    throw new Error('Falha ao gerar PDF após 3 tentativas');
   } finally {
-    await browser.close();
+    release();
+    _pdfLock = null;
   }
 }

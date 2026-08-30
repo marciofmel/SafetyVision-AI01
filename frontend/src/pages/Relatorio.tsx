@@ -11,11 +11,11 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [sharingType, setSharingType] = useState<'wa' | 'em' | null>(null);
+  const [sharingType, setSharingType] = useState<'share' | 'wa' | 'em' | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
+  const pdfCacheRef = useRef<Blob | null>(null);
 
   const getToken = () => localStorage.getItem('sv_token') || '';
-  const pdfCacheRef = useRef<Blob | null>(null);
 
   const getPdfBlob = async (): Promise<Blob | null> => {
     if (pdfCacheRef.current) return pdfCacheRef.current;
@@ -25,6 +25,10 @@ export default function Relatorio() {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
+      if (blob.type !== 'application/pdf' || blob.size === 0) {
+        console.error('Blob inválido', blob.type, blob.size);
+        return null;
+      }
       pdfCacheRef.current = blob;
       return blob;
     } catch (err: any) {
@@ -33,9 +37,78 @@ export default function Relatorio() {
     }
   };
 
+  const createPdfFile = (blob: Blob): File => {
+    const baseName = `Relatorio_Inspecao_SST_${inspecao?.empresa?.nome || id?.slice(0, 8)}.pdf`;
+    const fileName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
+    return new File([blob], fileName, { type: 'application/pdf' });
+  };
+
+  const baixarPDF = async () => {
+    setDownloading(true);
+    toast.loading('Baixando PDF...', { id: 'download' });
+    const blob = await getPdfBlob();
+    if (!blob) {
+      toast.error('Erro ao baixar relatório', { id: 'download' });
+      setDownloading(false);
+      return;
+    }
+    const file = createPdfFile(blob);
+    if (file.type !== 'application/pdf' || file.size === 0 || !file.name.endsWith('.pdf')) {
+      toast.error('Arquivo PDF inválido', { id: 'download' });
+      setDownloading(false);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('PDF baixado!', { id: 'download' });
+    setDownloading(false);
+  };
+
+  const compartilharPDF = async () => {
+    setSharingType('share');
+    toast.loading('Preparando PDF...', { id: 'share-pdf' });
+    const blob = await getPdfBlob();
+    if (!blob) {
+      toast.error('Erro ao obter PDF', { id: 'share-pdf' });
+      setSharingType(null);
+      return;
+    }
+    const pdfFile = createPdfFile(blob);
+    if (pdfFile.size === 0 || pdfFile.type !== 'application/pdf' || !pdfFile.name.endsWith('.pdf')) {
+      toast.error('PDF inválido', { id: 'share-pdf' });
+      setSharingType(null);
+      return;
+    }
+    if (navigator.canShare?.({ files: [pdfFile] })) {
+      try {
+        await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: 'Relatório de Inspeção SST' });
+        toast.success('PDF compartilhado!', { id: 'share-pdf' });
+        setSharingType(null);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') { toast.dismiss('share-pdf'); setSharingType(null); return; }
+        console.error('share error', err);
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pdfFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('PDF baixado — seu dispositivo não permite compartilhar direto', { id: 'share-pdf', duration: 5000 });
+    setSharingType(null);
+  };
+
   const shareWhatsApp = async () => {
-    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
-    const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     const win = window.open('', '_blank');
     setSharingType('wa');
     toast.loading('Preparando PDF...', { id: 'share-wa' });
@@ -46,33 +119,35 @@ export default function Relatorio() {
       setSharingType(null);
       return;
     }
-    const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
-    const file = new File([blob], fileName, { type: 'application/pdf' });
-    if (navigator.share) {
+    const pdfFile = createPdfFile(blob);
+    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
+    if (navigator.canShare?.({ files: [pdfFile] })) {
       try {
+        await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: texto });
         if (win) win.close();
-        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF compartilhado!', { id: 'share-wa' });
+        toast.success('PDF enviado para o WhatsApp!', { id: 'share-wa' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss('share-wa'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
-    const pdfUrl = URL.createObjectURL(blob);
-    window.open(pdfUrl, '_blank');
-    if (win && !win.closed) win.location.href = waLink;
-    else window.open(waLink, '_blank');
-    toast('PDF aberto — arraste para o WhatsApp', { id: 'share-wa' });
+    if (win) win.close();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pdfFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Seu dispositivo não permite anexar PDF direto no WhatsApp. PDF baixado — anexe manualmente.', { id: 'share-wa', duration: 7000 });
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
     setSharingType(null);
   };
 
   const shareEmail = async () => {
-    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
-    const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
-    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
     const win = window.open('', '_blank');
-    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo Gmail...</p>'); } catch {} }
     setSharingType('em');
     toast.loading('Preparando PDF...', { id: 'share-em' });
     const blob = await getPdfBlob();
@@ -82,24 +157,31 @@ export default function Relatorio() {
       setSharingType(null);
       return;
     }
-    const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
-    const file = new File([blob], fileName, { type: 'application/pdf' });
-    if (navigator.share) {
+    const pdfFile = createPdfFile(blob);
+    if (navigator.canShare?.({ files: [pdfFile] })) {
       try {
+        await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}` });
         if (win) win.close();
-        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
-        toast.success('PDF compartilhado!', { id: 'share-em' });
+        toast.success('PDF compartilhado por e-mail!', { id: 'share-em' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss('share-em'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
-    const pdfUrl2 = URL.createObjectURL(blob);
-    window.open(pdfUrl2, '_blank');
-    if (win && !win.closed) win.location.href = gmailLink;
-    else window.open(gmailLink, '_blank');
-    toast('PDF aberto — anexe no Gmail', { id: 'share-em' });
+    if (win) win.close();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pdfFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
+    const corpo = encodeURIComponent(`Olá,\n\nSegue em anexo o Relatório de Inspeção SST.\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\n\nO PDF foi baixado — anexe-o a este e-mail.\n\nAtt,\nSafetyVision AI`);
+    window.open(`mailto:?subject=${assunto}&body=${corpo}`, '_blank');
+    toast('PDF baixado — anexe-o ao e-mail.', { id: 'share-em', duration: 7000 });
     setSharingType(null);
   };
 
@@ -112,29 +194,6 @@ export default function Relatorio() {
       setLoading(false);
     });
   }, [id]);
-
-  const downloadPDF = async () => {
-    setDownloading(true);
-    toast.loading('Baixando PDF...', { id: 'download' });
-
-    const blob = await getPdfBlob();
-    if (!blob) {
-      toast.error('Erro ao baixar relatório', { id: 'download' });
-      setDownloading(false);
-      return;
-    }
-
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `relatorio-${inspecao.empresa?.nome || id?.slice(0, 8)}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    toast.success('PDF baixado!', { id: 'download' });
-    setDownloading(false);
-  };
 
   if (loading) {
     return (
@@ -163,7 +222,6 @@ export default function Relatorio() {
       </button>
 
       <div className="card overflow-hidden">
-        {/* Header */}
         <div className="bg-gradient-to-r from-navy-900 to-navy-800 p-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/20">
             <FiCheckCircle className="text-amber-400" size={32} />
@@ -172,7 +230,6 @@ export default function Relatorio() {
           <p className="mt-2 text-navy-300">Sua inspeção foi analisada com sucesso</p>
         </div>
 
-        {/* Content */}
         <div className="p-8">
           <div className="mb-6 grid grid-cols-2 gap-4">
             {[
@@ -206,37 +263,27 @@ export default function Relatorio() {
             </div>
           </div>
 
-          <button onClick={downloadPDF} disabled={downloading} className="btn-primary w-full py-4 text-base disabled:opacity-50">
+          <button onClick={baixarPDF} disabled={downloading} className="btn-primary w-full py-4 text-base disabled:opacity-50">
             {downloading ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-            {downloading ? 'Baixando...' : 'Baixar Relatório PDF'}
+            {downloading ? 'Baixando...' : '⬇️ Baixar PDF'}
           </button>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <button
-              onClick={shareWhatsApp}
-              disabled={sharingType !== null}
-              className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100 disabled:opacity-50"
-            >
-              {sharingType === 'wa' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharingType === 'wa' ? 'Preparando...' : 'Enviar PDF WhatsApp'}
+            <button onClick={compartilharPDF} disabled={sharingType !== null} className="flex items-center justify-center gap-2 rounded-xl border-2 border-purple-200 bg-purple-50 py-3 text-sm font-bold text-purple-700 hover:bg-purple-100 disabled:opacity-50">
+              {sharingType === 'share' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              📤 Compartilhar PDF
             </button>
-            <button
-              onClick={shareEmail}
-              disabled={sharingType !== null}
-              className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
-            >
-              {sharingType === 'em' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharingType === 'em' ? 'Preparando...' : 'Enviar PDF Email'}
+            <button onClick={shareWhatsApp} disabled={sharingType !== null} className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 hover:bg-green-100 disabled:opacity-50">
+              {sharingType === 'wa' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              🟢 WhatsApp
             </button>
           </div>
+          <button onClick={shareEmail} disabled={sharingType !== null} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
+            {sharingType === 'em' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+            ✉️ E-mail
+          </button>
 
-          <button
-            onClick={() => {
-              setShowDetails(!showDetails);
-              setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-            }}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-200 bg-navy-50 py-3 text-sm font-bold text-navy-700 transition-all hover:bg-navy-100"
-          >
+          <button onClick={() => { setShowDetails(!showDetails); setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-200 bg-navy-50 py-3 text-sm font-bold text-navy-700 hover:bg-navy-100">
             {showDetails ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             {showDetails ? 'Fechar Detalhes' : 'Examinar Relatório'}
           </button>
@@ -244,29 +291,17 @@ export default function Relatorio() {
           {showDetails && (
             <div ref={detailsRef} className="mt-6 border-t border-navy-100 pt-6">
               <h2 className="mb-4 text-lg font-extrabold text-navy-900">Detalhes Completos da Inspeção</h2>
-
-              {/* Informações gerais */}
               <div className="mb-4 rounded-xl bg-navy-50 p-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2"><FiFileText className="text-navy-400" /><span className="text-navy-500">Empresa:</span> <span className="font-bold text-navy-900">{inspecao.empresa?.nome || '---'}</span></div>
                   <div className="flex items-center gap-2"><FiMapPin className="text-navy-400" /><span className="text-navy-500">Setor:</span> <span className="font-bold text-navy-900">{inspecao.setor?.nome || '---'}</span></div>
                   <div className="flex items-center gap-2"><FiClock className="text-navy-400" /><span className="text-navy-500">Início:</span> <span className="font-bold text-navy-900">{inspecao.dataInicio ? new Date(inspecao.dataInicio).toLocaleString('pt-BR') : '---'}</span></div>
                   <div className="flex items-center gap-2"><FiClock className="text-navy-400" /><span className="text-navy-500">Fim:</span> <span className="font-bold text-navy-900">{inspecao.dataFim ? new Date(inspecao.dataFim).toLocaleString('pt-BR') : '---'}</span></div>
-                  {inspecao.observacoes && (
-                    <div className="col-span-2 mt-2 rounded-lg bg-white p-3 border border-navy-100">
-                      <p className="text-xs font-bold text-navy-400 mb-1">Observações</p>
-                      <p className="text-sm text-navy-700">{inspecao.observacoes}</p>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Riscos */}
               {inspecao.riscos?.length > 0 && (
                 <div className="mb-4">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-danger-700">
-                    <FiAlertTriangle size={16} /> Riscos Identificados ({inspecao.riscos.length})
-                  </h3>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-danger-700"><FiAlertTriangle size={16} /> Riscos Identificados ({inspecao.riscos.length})</h3>
                   <div className="space-y-2">
                     {inspecao.riscos.map((r: any) => (
                       <div key={r.id} className="rounded-xl border border-navy-100 bg-white p-3">
@@ -274,97 +309,27 @@ export default function Relatorio() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-bold text-navy-900 break-words">{r.categoria}</p>
                             <p className="mt-1 text-xs text-navy-600 break-words">{r.descricao}</p>
-                            {r.localIdentificado && <p className="mt-1 text-xs text-navy-400">Local: {r.localIdentificado}</p>}
                           </div>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                            r.gravidade === 'critica' ? 'bg-red-100 text-red-700' :
-                            r.gravidade === 'alta' ? 'bg-orange-100 text-orange-700' :
-                            r.gravidade === 'media' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                            {r.gravidade}
-                          </span>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${r.gravidade === 'critica' ? 'bg-red-100 text-red-700' : r.gravidade === 'alta' ? 'bg-orange-100 text-orange-700' : r.gravidade === 'media' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>{r.gravidade}</span>
                         </div>
-                        {r.medidasPreventivas && <p className="mt-2 text-xs text-navy-500 break-words"><strong>Prevenção:</strong> {r.medidasPreventivas}</p>}
-                        {r.medidasCorretivas && <p className="mt-1 text-xs text-navy-500 break-words"><strong>Correção:</strong> {r.medidasCorretivas}</p>}
-                        {r.nrsRelacionadas && <p className="mt-1 text-[10px] font-bold text-amber-600">NRs: {r.nrsRelacionadas}</p>}
-                        {r.imagemUrl && (
-                          <img src={r.imagemUrl} alt={r.categoria} className="mt-2 max-h-40 rounded-lg object-cover" />
-                        )}
+                        {r.imagemUrl && <img src={r.imagemUrl} alt={r.categoria} className="mt-2 max-h-40 rounded-lg object-cover" />}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* EPIs */}
-              {inspecao.epiViolacoes?.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
-                    <FiShield size={16} /> Violações de EPI ({inspecao.epiViolacoes.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {inspecao.epiViolacoes.map((e: any) => (
-                      <div key={e.id} className="flex items-center gap-3 rounded-xl border border-navy-100 bg-white p-3">
-                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${e.status === 'ausente' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
-                          <FiShield size={14} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-navy-900 break-words">{e.epiNome}</p>
-                          <p className="text-xs text-navy-500">Status: {e.status === 'ausente' ? 'Ausente' : e.status === 'danificado' ? 'Danificado' : 'Incorreto'}</p>
-                          {e.descricao && <p className="text-xs text-navy-400 break-words">{e.descricao}</p>}
-                        </div>
-                        {e.imagemUrl && <img src={e.imagemUrl} alt={e.epiNome} className="h-12 w-12 shrink-0 rounded-lg object-cover" />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Checklist */}
-              {inspecao.checklistRespostas?.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
-                    <FiCheckCircle size={16} /> Respostas do Checklist ({inspecao.checklistRespostas.length})
-                  </h3>
-                  <div className="space-y-1">
-                    {inspecao.checklistRespostas.map((c: any) => (
-                      <div key={c.id} className="flex items-center gap-3 rounded-lg bg-white border border-navy-100 px-3 py-2">
-                        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${c.conformidade === 'conforme' ? 'bg-success-500' : 'bg-danger-500'}`}>
-                          {c.conformidade === 'conforme' ? 'C' : 'NC'}
-                        </span>
-                        <span className="text-xs text-navy-700 break-words flex-1">{c.item?.texto || 'Item'}</span>
-                        {c.observacao && <span className="text-[10px] text-navy-400 shrink-0">({c.observacao})</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Mídias */}
               {inspecao.midias?.length > 0 && (
                 <div className="mb-4">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700">
-                    <FiImage size={16} /> Fotos e Vídeos ({inspecao.midias.length})
-                  </h3>
+                  <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-navy-700"><FiImage size={16} /> Fotos e Vídeos ({inspecao.midias.length})</h3>
                   <div className="grid grid-cols-3 gap-2">
                     {inspecao.midias.map((m: any) => (
                       <div key={m.id} className="group relative overflow-hidden rounded-xl border border-navy-100">
-                        {m.tipo === 'video' ? (
-                          <video src={m.url} className="aspect-square w-full object-cover" controls preload="metadata" />
-                        ) : (
-                          <img src={m.url} alt={m.nome} className="aspect-square w-full object-cover" />
-                        )}
-                        <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
-                          <p className="w-full p-2 text-[10px] font-bold text-white truncate">{m.nome}</p>
-                        </div>
+                        {m.tipo === 'video' ? <video src={m.url} className="aspect-square w-full object-cover" controls preload="metadata" /> : <img src={m.url} alt={m.nome} className="aspect-square w-full object-cover" />}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
-              {/* Nota final */}
               <div className="rounded-xl bg-gradient-to-r from-navy-900 to-navy-800 p-4 text-center">
                 <p className="text-xs font-bold text-navy-300">Nota de Conformidade</p>
                 <p className="mt-1 text-4xl font-extrabold text-white">{inspecao.notaConformidade ?? '---'}<span className="text-lg text-navy-300">/100</span></p>

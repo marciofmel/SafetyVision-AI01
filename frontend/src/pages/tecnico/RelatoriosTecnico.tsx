@@ -19,6 +19,7 @@ export default function RelatoriosTecnico() {
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const pdfCache = new Map<string, Blob>();
 
   useEffect(() => {
     api.get('/relatorios').then(({ data }) => {
@@ -28,7 +29,6 @@ export default function RelatoriosTecnico() {
   }, []);
 
   const getToken = () => localStorage.getItem('sv_token') || '';
-  const pdfCache = new Map<string, Blob>();
 
   const getPdfBlob = async (id: string): Promise<Blob | null> => {
     if (pdfCache.has(id)) return pdfCache.get(id)!;
@@ -38,12 +38,18 @@ export default function RelatoriosTecnico() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
+      if (blob.type !== 'application/pdf' || blob.size === 0) return null;
       pdfCache.set(id, blob);
       return blob;
     } catch (err: any) {
       console.error('Erro ao obter PDF:', err);
       return null;
     }
+  };
+
+  const createPdfFile = (blob: Blob, baseName: string): File => {
+    const fileName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
+    return new File([blob], fileName, { type: 'application/pdf' });
   };
 
   const baixar = async (r: Relatorio) => {
@@ -55,10 +61,16 @@ export default function RelatoriosTecnico() {
       setActionId(null);
       return;
     }
+    const file = createPdfFile(blob, r.nomeArquivo);
+    if (file.type !== 'application/pdf' || file.size === 0 || !file.name.endsWith('.pdf')) {
+      toast.error('PDF inválido', { id: `dl-${r.id}` });
+      setActionId(null);
+      return;
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    a.download = file.name;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -67,10 +79,41 @@ export default function RelatoriosTecnico() {
     setActionId(null);
   };
 
-  const excluir = async (r: Relatorio) => {
-    if (!confirm('Excluir este relatório?')) return;
-    await api.delete(`/relatorios/${r.id}`);
-    setRelatorios(prev => prev.filter(x => x.id !== r.id));
+  const compartilharPDF = async (r: Relatorio) => {
+    setActionId(`${r.id}-share`);
+    toast.loading('Preparando PDF...', { id: `share-${r.id}` });
+    const blob = await getPdfBlob(r.id);
+    if (!blob) {
+      toast.error('Erro ao obter PDF', { id: `share-${r.id}` });
+      setActionId(null);
+      return;
+    }
+    const file = createPdfFile(blob, r.nomeArquivo);
+    if (file.size === 0 || file.type !== 'application/pdf' || !file.name.endsWith('.pdf')) {
+      toast.error('PDF inválido', { id: `share-${r.id}` });
+      setActionId(null);
+      return;
+    }
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}` });
+        toast.success('PDF compartilhado!', { id: `share-${r.id}` });
+        setActionId(null);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') { toast.dismiss(`share-${r.id}`); setActionId(null); return; }
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('PDF baixado — seu dispositivo não permite compartilhar direto', { id: `share-${r.id}`, duration: 5000 });
+    setActionId(null);
   };
 
   const compartilharWhatsApp = async (r: Relatorio) => {
@@ -86,30 +129,33 @@ export default function RelatoriosTecnico() {
       setActionId(null);
       return;
     }
-    const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-    if (navigator.share) {
+    const file = createPdfFile(blob, r.nomeArquivo);
+    if (navigator.canShare?.({ files: [file] })) {
       try {
+        await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: texto });
         if (win) win.close();
-        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF compartilhado!', { id: `wa-${r.id}` });
+        toast.success('PDF enviado para o WhatsApp!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
-    const pdfUrl = URL.createObjectURL(blob);
-    window.open(pdfUrl, '_blank');
-    if (win && !win.closed) win.location.href = waLink;
-    else window.open(waLink, '_blank');
-    toast('PDF aberto — arraste para o WhatsApp', { id: `wa-${r.id}` });
+    if (win) win.close();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Seu dispositivo não permite anexar PDF direto no WhatsApp. PDF baixado — anexe manualmente.', { id: `wa-${r.id}`, duration: 7000 });
+    window.open(waLink, '_blank');
     setActionId(null);
   };
 
   const compartilharEmail = async (r: Relatorio) => {
-    const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
-    const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${r.empresaNome}\nSetor: ${r.setorNome}\nNota: ${r.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
-    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
     const win = window.open('', '_blank');
     setActionId(`${r.id}-em`);
     toast.loading('Preparando PDF...', { id: `em-${r.id}` });
@@ -120,24 +166,38 @@ export default function RelatoriosTecnico() {
       setActionId(null);
       return;
     }
-    const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-    if (navigator.share) {
+    const file = createPdfFile(blob, r.nomeArquivo);
+    if (navigator.canShare?.({ files: [file] })) {
       try {
+        await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}` });
         if (win) win.close();
-        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
-        toast.success('PDF compartilhado!', { id: `em-${r.id}` });
+        toast.success('PDF compartilhado por e-mail!', { id: `em-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss(`em-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
-    const pdfUrl2 = URL.createObjectURL(blob);
-    window.open(pdfUrl2, '_blank');
-    if (win && !win.closed) win.location.href = gmailLink;
-    else window.open(gmailLink, '_blank');
-    toast('PDF aberto — anexe no Gmail', { id: `em-${r.id}` });
+    if (win) win.close();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
+    const corpo = encodeURIComponent(`Olá,\n\nSegue em anexo o Relatório de Inspeção SST.\n\nEmpresa: ${r.empresaNome}\nSetor: ${r.setorNome}\nNota: ${r.notaConformidade ?? '---'}/100\n\nO PDF foi baixado — anexe-o a este e-mail.\n\nAtt,\nSafetyVision AI`);
+    window.open(`mailto:?subject=${assunto}&body=${corpo}`, '_blank');
+    toast('PDF baixado — anexe-o ao e-mail.', { id: `em-${r.id}`, duration: 7000 });
     setActionId(null);
+  };
+
+  const excluir = async (r: Relatorio) => {
+    if (!confirm('Excluir este relatório?')) return;
+    await api.delete(`/relatorios/${r.id}`);
+    setRelatorios(prev => prev.filter(x => x.id !== r.id));
   };
 
   const formatarTamanho = (bytes: number) => {
@@ -186,39 +246,23 @@ export default function RelatoriosTecnico() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className={`mr-2 rounded-lg px-3 py-1 text-sm font-bold ${
-                  (r.notaConformidade ?? 0) >= 70 ? 'bg-green-50 text-green-600' :
-                  (r.notaConformidade ?? 0) >= 40 ? 'bg-amber-50 text-amber-600' :
-                  'bg-red-50 text-red-600'
-                }`}>
+                <span className={`mr-2 rounded-lg px-3 py-1 text-sm font-bold ${(r.notaConformidade ?? 0) >= 70 ? 'bg-green-50 text-green-600' : (r.notaConformidade ?? 0) >= 40 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
                   {r.notaConformidade ?? '---'}/100
                 </span>
 
-                <button
-                  onClick={() => baixar(r)}
-                  disabled={isLoading(r.id, 'dl')}
-                  className="rounded-lg border border-navy-200 p-2 text-navy-500 transition-all hover:bg-navy-50 disabled:opacity-50"
-                  title="Baixar PDF"
-                >
+                <button onClick={() => baixar(r)} disabled={isLoading(r.id, 'dl')} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Baixar PDF">
                   {isLoading(r.id, 'dl') ? <FiLoader size={16} className="animate-spin" /> : <FiDownload size={16} />}
                 </button>
-                <button
-                  onClick={() => compartilharWhatsApp(r)}
-                  disabled={isLoading(r.id, 'wa')}
-                  className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition-all hover:bg-green-100 disabled:opacity-50"
-                  title="WhatsApp"
-                >
-                  {isLoading(r.id, 'wa') ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
+                <button onClick={() => compartilharPDF(r)} disabled={isLoading(r.id, 'share')} className="rounded-lg border border-purple-200 bg-purple-50 p-2 text-purple-600 hover:bg-purple-100 disabled:opacity-50" title="Compartilhar PDF">
+                  {isLoading(r.id, 'share') ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
                 </button>
-                <button
-                  onClick={() => compartilharEmail(r)}
-                  disabled={isLoading(r.id, 'em')}
-                  className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition-all hover:bg-blue-100 disabled:opacity-50"
-                  title="Email"
-                >
+                <button onClick={() => compartilharWhatsApp(r)} disabled={isLoading(r.id, 'wa')} className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 hover:bg-green-100 disabled:opacity-50" title="WhatsApp">
+                  {isLoading(r.id, 'wa') ? <FiLoader size={16} className="animate-spin" /> : <span className="text-xs font-bold">WA</span>}
+                </button>
+                <button onClick={() => compartilharEmail(r)} disabled={isLoading(r.id, 'em')} className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 disabled:opacity-50" title="E-mail">
                   {isLoading(r.id, 'em') ? <FiLoader size={16} className="animate-spin" /> : <FiFileText size={16} />}
                 </button>
-                <button onClick={() => excluir(r)} className="rounded-lg border border-red-200 p-2 text-red-400 transition-all hover:bg-red-50 hover:text-red-600" title="Excluir">
+                <button onClick={() => excluir(r)} className="rounded-lg border border-red-200 p-2 text-red-400 hover:bg-red-50 hover:text-red-600" title="Excluir">
                   <FiTrash2 size={16} />
                 </button>
               </div>
