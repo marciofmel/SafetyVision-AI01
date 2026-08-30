@@ -18,7 +18,7 @@ export default function Relatorio() {
 
   const downloadPdfBlob = async (): Promise<Blob | null> => {
     try {
-      const response = await fetch(`/api/relatorios/${id}/gerar`, {
+      const response = await fetch(`/api/relatorio/${id}/relatorio`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
