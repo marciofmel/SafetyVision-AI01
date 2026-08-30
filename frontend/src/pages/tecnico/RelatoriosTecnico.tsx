@@ -94,7 +94,7 @@ export default function RelatoriosTecnico() {
       setActionId(null);
       return;
     }
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
         await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}` });
         toast.success('PDF compartilhado!', { id: `share-${r.id}` });
@@ -130,7 +130,7 @@ export default function RelatoriosTecnico() {
       return;
     }
     const file = createPdfFile(blob, r.nomeArquivo);
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
         await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: texto });
         if (win) win.close();
@@ -167,7 +167,7 @@ export default function RelatoriosTecnico() {
       return;
     }
     const file = createPdfFile(blob, r.nomeArquivo);
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
         await navigator.share({ files: [file], title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}` });
         if (win) win.close();
@@ -273,3 +273,4 @@ export default function RelatoriosTecnico() {
     </div>
   );
 }
+
