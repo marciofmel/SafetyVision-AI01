@@ -1,13 +1,42 @@
 import { Router } from 'express';
+import path from 'path';
+import fs from 'fs';
 import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 import { generateRelatorioPDF } from '../services/pdfService';
 
 const router = Router();
 
+function getUploadsDir(): string {
+  const candidates = [
+    path.join(__dirname, '../../uploads'),
+    path.join(process.cwd(), 'backend/uploads'),
+    path.join(process.cwd(), 'src/backend/uploads'),
+    '/opt/render/project/src/backend/uploads',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return path.join(__dirname, '../../uploads');
+}
+
 router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
   try {
     const inspecaoId = String(req.params.inspecaoId);
+
+    const relatorio = await prisma.relatorio.findFirst({
+      where: { inspecaoId, userId: req.userId! },
+    });
+
+    if (relatorio) {
+      const filePath = path.join(getUploadsDir(), 'relatorios', relatorio.nomeArquivo);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${relatorio.nomeArquivo}"`);
+        return res.sendFile(filePath);
+      }
+    }
+
     const inspecao = await prisma.inspecao.findFirst({
       where: { id: inspecaoId, usuarioId: req.userId! },
       include: {
@@ -22,30 +51,11 @@ router.get('/:inspecaoId/relatorio', async (req: AuthRequest, res) => {
       where: { inspecaoId: inspecao.id },
       include: { item: { include: { template: true } } },
     });
+    const pgrs = await prisma.pGR.findMany({ where: { empresaId: inspecao.empresaId }, include: { itens: true } });
+    const asos = await prisma.aSO.findMany({ where: { empresaId: inspecao.empresaId }, include: { colaborador: true }, orderBy: { dataExame: 'desc' } });
+    const cipas = await prisma.cIPA.findMany({ where: { empresaId: inspecao.empresaId } });
 
-    const pgrs = await prisma.pGR.findMany({
-      where: { empresaId: inspecao.empresaId },
-      include: { itens: true },
-    });
-
-    const asos = await prisma.aSO.findMany({
-      where: { empresaId: inspecao.empresaId },
-      include: { colaborador: true },
-      orderBy: { dataExame: 'desc' },
-    });
-
-    const cipas = await prisma.cIPA.findMany({
-      where: { empresaId: inspecao.empresaId },
-    });
-
-    const pdfBuffer = await generateRelatorioPDF({
-      inspecao,
-      clRespostas,
-      pgrs,
-      asos,
-      cipas,
-    });
-
+    const pdfBuffer = await generateRelatorioPDF({ inspecao, clRespostas, pgrs, asos, cipas });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=relatorio-${inspecao.id.slice(0, 8)}.pdf`);
     res.send(pdfBuffer);

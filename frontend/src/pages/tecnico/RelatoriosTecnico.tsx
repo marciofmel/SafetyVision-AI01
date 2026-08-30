@@ -29,27 +29,25 @@ export default function RelatoriosTecnico() {
 
   const getToken = () => localStorage.getItem('sv_token') || '';
 
-  const getDownloadUrl = (id: string) => `/api/relatorios/${id}/download`;
-
-  const downloadPdf = async (r: Relatorio): Promise<Blob | null> => {
+  const getPdfBlob = async (id: string): Promise<Blob | null> => {
     try {
-      const res = await fetch(getDownloadUrl(r.id), {
+      const res = await fetch(`/api/relatorios/${id}/arquivo`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.blob();
     } catch (err: any) {
-      console.error('Erro ao baixar PDF:', err);
+      console.error('Erro ao obter PDF:', err);
       return null;
     }
   };
 
   const baixar = async (r: Relatorio) => {
     setActionId(r.id);
-    toast.loading('Gerando PDF...', { id: `dl-${r.id}` });
-    const blob = await downloadPdf(r);
+    toast.loading('Baixando PDF...', { id: `dl-${r.id}` });
+    const blob = await getPdfBlob(r.id);
     if (!blob) {
-      toast.error('Erro ao gerar PDF', { id: `dl-${r.id}` });
+      toast.error('Erro ao obter PDF', { id: `dl-${r.id}` });
       setActionId(null);
       return;
     }
@@ -75,21 +73,20 @@ export default function RelatoriosTecnico() {
     setActionId(r.id);
     toast.loading('Preparando PDF...', { id: `wa-${r.id}` });
 
-    const blob = await downloadPdf(r);
+    const blob = await getPdfBlob(r.id);
     if (!blob) {
-      toast.error('Erro ao gerar PDF', { id: `wa-${r.id}` });
+      toast.error('Erro ao obter PDF', { id: `wa-${r.id}` });
       setActionId(null);
       return;
     }
 
     const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
-
-    // Web Share API (funciona em mobile e Chrome desktop)
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
+
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('Compartilhado!', { id: `wa-${r.id}` });
+        toast.success('PDF compartilhado!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
@@ -101,7 +98,6 @@ export default function RelatoriosTecnico() {
       }
     }
 
-    // Fallback: baixa o PDF e abre WhatsApp com texto
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -111,7 +107,7 @@ export default function RelatoriosTecnico() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF baixado. Anexe-o na conversa.')}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF anexado.')}`, '_blank');
     toast.success('PDF baixado! Anexe no WhatsApp.', { id: `wa-${r.id}`, duration: 6000 });
     setActionId(null);
   };
@@ -120,14 +116,30 @@ export default function RelatoriosTecnico() {
     setActionId(r.id);
     toast.loading('Preparando PDF...', { id: `em-${r.id}` });
 
-    const blob = await downloadPdf(r);
+    const blob = await getPdfBlob(r.id);
     if (!blob) {
-      toast.error('Erro ao gerar PDF', { id: `em-${r.id}` });
+      toast.error('Erro ao obter PDF', { id: `em-${r.id}` });
       setActionId(null);
       return;
     }
 
-    // Baixa o PDF
+    const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
+        toast.success('PDF compartilhado!', { id: `em-${r.id}` });
+        setActionId(null);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          toast.dismiss(`em-${r.id}`);
+          setActionId(null);
+          return;
+        }
+      }
+    }
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -137,8 +149,7 @@ export default function RelatoriosTecnico() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Abre Gmail com link de download no corpo
-    const downloadUrl = `${window.location.origin}/api/relatorios/${r.id}/download`;
+    const downloadUrl = `${window.location.origin}/api/relatorios/${r.id}/arquivo`;
     const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
     const corpo = encodeURIComponent(
       `Prezado(a),\n\n` +
@@ -146,7 +157,7 @@ export default function RelatoriosTecnico() {
       `Empresa: ${r.empresaNome}\nSetor: ${r.setorNome}\n` +
       `Nota de Conformidade: ${r.notaConformidade ?? '---'}/100\n` +
       `Data: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}\n\n` +
-      `O PDF está baixado no seu computador. Anexe-o a este email.\n` +
+      `O PDF está anexo a este email.\n` +
       `Ou acesse: ${downloadUrl}\n\n` +
       `Att,\nSafetyVision AI`
     );
