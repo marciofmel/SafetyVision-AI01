@@ -28,14 +28,18 @@ export default function RelatoriosTecnico() {
   }, []);
 
   const getToken = () => localStorage.getItem('sv_token') || '';
+  const pdfCache = new Map<string, Blob>();
 
   const getPdfBlob = async (id: string): Promise<Blob | null> => {
+    if (pdfCache.has(id)) return pdfCache.get(id)!;
     try {
       const res = await fetch(`/api/relatorios/${id}/arquivo`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.blob();
+      const blob = await res.blob();
+      pdfCache.set(id, blob);
+      return blob;
     } catch (err: any) {
       console.error('Erro ao obter PDF:', err);
       return null;
@@ -95,18 +99,11 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
-    // Fallback desktop: baixa PDF para anexar manualmente (limitação web)
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const pdfUrl = URL.createObjectURL(blob);
+    window.open(pdfUrl, '_blank');
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('PDF baixado! Anexe no WhatsApp.', { id: `wa-${r.id}`, duration: 6000 });
+    toast('PDF aberto em nova aba — anexe no WhatsApp', { id: `wa-${r.id}` });
     setActionId(null);
   };
 
@@ -137,17 +134,11 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const pdfUrl2 = URL.createObjectURL(blob);
+    window.open(pdfUrl2, '_blank');
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('PDF baixado! Anexe no Gmail.', { id: `em-${r.id}`, duration: 6000 });
+    toast('PDF aberto em nova aba — anexe no Gmail', { id: `em-${r.id}` });
     setActionId(null);
   };
 

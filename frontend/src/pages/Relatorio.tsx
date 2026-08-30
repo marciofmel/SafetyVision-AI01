@@ -15,14 +15,18 @@ export default function Relatorio() {
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const getToken = () => localStorage.getItem('sv_token') || '';
+  const pdfCacheRef = useRef<Blob | null>(null);
 
   const getPdfBlob = async (): Promise<Blob | null> => {
+    if (pdfCacheRef.current) return pdfCacheRef.current;
     try {
       const response = await fetch(`/api/relatorio/${id}/relatorio`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.blob();
+      const blob = await response.blob();
+      pdfCacheRef.current = blob;
+      return blob;
     } catch (err: any) {
       console.error('Erro ao obter PDF:', err);
       return null;
@@ -56,17 +60,11 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const pdfUrl = URL.createObjectURL(blob);
+    window.open(pdfUrl, '_blank');
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('PDF baixado! Anexe no WhatsApp.', { id: 'share-wa', duration: 6000 });
+    toast('PDF aberto em nova aba — anexe no WhatsApp', { id: 'share-wa' });
     setSharingType(null);
   };
 
@@ -98,17 +96,11 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
-    const url2 = URL.createObjectURL(blob);
-    const a2 = document.createElement('a');
-    a2.href = url2;
-    a2.download = fileName;
-    document.body.appendChild(a2);
-    a2.click();
-    document.body.removeChild(a2);
-    URL.revokeObjectURL(url2);
+    const pdfUrl2 = URL.createObjectURL(blob);
+    window.open(pdfUrl2, '_blank');
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('PDF baixado! Anexe no Gmail.', { id: 'share-em', duration: 6000 });
+    toast('PDF aberto em nova aba — anexe no Gmail', { id: 'share-em' });
     setSharingType(null);
   };
 
