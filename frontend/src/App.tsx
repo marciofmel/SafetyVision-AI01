@@ -36,6 +36,7 @@ import DashboardAdminGlobal from './pages/admin/DashboardAdminGlobal';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
 import Relatorio from './pages/Relatorio';
+import EditarRelatorio from './pages/tecnico/EditarRelatorio';
 import Historico from './pages/Historico';
 import TecnicoLayout from './components/TecnicoLayout';
 
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="setores" element={<SetoresTecnico />} />
         <Route path="analise/:id" element={<AnaliseIA />} />
         <Route path="relatorio/:id" element={<Relatorio />} />
+        <Route path="relatorio/:id/editar" element={<EditarRelatorio />} />
         <Route path="historico" element={<Historico />} />
         <Route path="checklists" element={<ChecklistsTecnico />} />
         <Route path="calculadora-nr28" element={<CalculadoraNR28 />} />
