@@ -43,7 +43,7 @@ export default function RelatoriosTecnico() {
   };
 
   const baixar = async (r: Relatorio) => {
-    setActionId(r.id);
+    setActionId(`${r.id}-dl`);
     toast.loading('Baixando PDF...', { id: `dl-${r.id}` });
     const blob = await getPdfBlob(r.id);
     if (!blob) {
@@ -73,7 +73,7 @@ export default function RelatoriosTecnico() {
     const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
     const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     const win = window.open('', '_blank');
-    setActionId(r.id);
+    setActionId(`${r.id}-wa`);
     toast.loading('Preparando PDF...', { id: `wa-${r.id}` });
 
     const blob = await getPdfBlob(r.id);
@@ -130,7 +130,7 @@ export default function RelatoriosTecnico() {
     );
     const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
     const win = window.open('', '_blank');
-    setActionId(r.id);
+    setActionId(`${r.id}-em`);
     toast.loading('Preparando PDF...', { id: `em-${r.id}` });
 
     const blob = await getPdfBlob(r.id);
@@ -180,7 +180,7 @@ export default function RelatoriosTecnico() {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
-  const isLoading = (id: string) => actionId === id;
+  const isLoading = (id: string, type: string) => actionId === `${id}-${type}`;
 
   return (
     <div className="p-6">
@@ -230,27 +230,27 @@ export default function RelatoriosTecnico() {
 
                 <button
                   onClick={() => baixar(r)}
-                  disabled={isLoading(r.id)}
+                  disabled={isLoading(r.id, 'dl')}
                   className="rounded-lg border border-navy-200 p-2 text-navy-500 transition-all hover:bg-navy-50 disabled:opacity-50"
                   title="Baixar PDF"
                 >
-                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiDownload size={16} />}
+                  {isLoading(r.id, 'dl') ? <FiLoader size={16} className="animate-spin" /> : <FiDownload size={16} />}
                 </button>
                 <button
                   onClick={() => compartilharWhatsApp(r)}
-                  disabled={isLoading(r.id)}
+                  disabled={isLoading(r.id, 'wa')}
                   className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition-all hover:bg-green-100 disabled:opacity-50"
                   title="WhatsApp"
                 >
-                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
+                  {isLoading(r.id, 'wa') ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
                 </button>
                 <button
                   onClick={() => compartilharEmail(r)}
-                  disabled={isLoading(r.id)}
+                  disabled={isLoading(r.id, 'em')}
                   className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition-all hover:bg-blue-100 disabled:opacity-50"
                   title="Email"
                 >
-                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiFileText size={16} />}
+                  {isLoading(r.id, 'em') ? <FiLoader size={16} className="animate-spin" /> : <FiFileText size={16} />}
                 </button>
                 <button onClick={() => excluir(r)} className="rounded-lg border border-red-200 p-2 text-red-400 transition-all hover:bg-red-50 hover:text-red-600" title="Excluir">
                   <FiTrash2 size={16} />

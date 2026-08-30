@@ -11,7 +11,7 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [sharing, setSharing] = useState(false);
+  const [sharingType, setSharingType] = useState<'wa' | 'em' | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
 
   const getToken = () => localStorage.getItem('sv_token') || '';
@@ -33,14 +33,14 @@ export default function Relatorio() {
     const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
     const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     const win = window.open('', '_blank');
-    setSharing(true);
+    setSharingType('wa');
     toast.loading('Preparando PDF...', { id: 'share-wa' });
 
     const blob = await getPdfBlob();
     if (!blob) {
       if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-wa' });
-      setSharing(false);
+      setSharingType(null);
       return;
     }
 
@@ -52,12 +52,12 @@ export default function Relatorio() {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
         toast.success('PDF compartilhado!', { id: 'share-wa' });
-        setSharing(false);
+        setSharingType(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') {
           toast.dismiss('share-wa');
-          setSharing(false);
+          setSharingType(null);
           return;
         }
       }
@@ -75,7 +75,7 @@ export default function Relatorio() {
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
     toast.success('PDF baixado! Anexe no WhatsApp.', { id: 'share-wa', duration: 6000 });
-    setSharing(false);
+    setSharingType(null);
   };
 
   const shareEmail = async () => {
@@ -94,14 +94,14 @@ export default function Relatorio() {
     );
     const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
     const win = window.open('', '_blank');
-    setSharing(true);
+    setSharingType('em');
     toast.loading('Preparando PDF...', { id: 'share-em' });
 
     const blob = await getPdfBlob();
     if (!blob) {
       if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-em' });
-      setSharing(false);
+      setSharingType(null);
       return;
     }
 
@@ -113,12 +113,12 @@ export default function Relatorio() {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
         toast.success('PDF compartilhado!', { id: 'share-em' });
-        setSharing(false);
+        setSharingType(null);
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') {
           toast.dismiss('share-em');
-          setSharing(false);
+          setSharingType(null);
           return;
         }
       }
@@ -136,7 +136,7 @@ export default function Relatorio() {
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
     toast.success('PDF baixado! Anexe no Gmail.', { id: 'share-em', duration: 6000 });
-    setSharing(false);
+    setSharingType(null);
   };
 
   useEffect(() => {
@@ -250,19 +250,19 @@ export default function Relatorio() {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <button
               onClick={shareWhatsApp}
-              disabled={sharing}
+              disabled={sharingType !== null}
               className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100 disabled:opacity-50"
             >
-              {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharing ? 'Preparando...' : 'Enviar PDF WhatsApp'}
+              {sharingType === 'wa' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              {sharingType === 'wa' ? 'Preparando...' : 'Enviar PDF WhatsApp'}
             </button>
             <button
               onClick={shareEmail}
-              disabled={sharing}
+              disabled={sharingType !== null}
               className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
             >
-              {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharing ? 'Preparando...' : 'Enviar PDF Email'}
+              {sharingType === 'em' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
+              {sharingType === 'em' ? 'Preparando...' : 'Enviar PDF Email'}
             </button>
           </div>
 
