@@ -37,7 +37,6 @@ export default function Relatorio() {
     const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
     const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     const win = window.open('', '_blank');
-    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo WhatsApp...</p>'); } catch {} }
     setSharingType('wa');
     toast.loading('Preparando PDF...', { id: 'share-wa' });
     const blob = await getPdfBlob();
@@ -49,22 +48,22 @@ export default function Relatorio() {
     }
     const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
-        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
         if (win) win.close();
-        toast.success('PDF compartilhado com sucesso!', { id: 'share-wa' });
+        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+        toast.success('PDF compartilhado!', { id: 'share-wa' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
     const pdfUrl = URL.createObjectURL(blob);
     window.open(pdfUrl, '_blank');
-    if (win) win.location.href = waLink;
+    if (win && !win.closed) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast('PDF aberto em nova aba — arraste para o WhatsApp no PC', { id: 'share-wa' });
+    toast('PDF aberto — arraste para o WhatsApp', { id: 'share-wa' });
     setSharingType(null);
   };
 
@@ -85,22 +84,22 @@ export default function Relatorio() {
     }
     const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
-        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
         if (win) win.close();
-        toast.success('PDF compartilhado com sucesso!', { id: 'share-em' });
+        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
+        toast.success('PDF compartilhado!', { id: 'share-em' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
     const pdfUrl2 = URL.createObjectURL(blob);
     window.open(pdfUrl2, '_blank');
-    if (win) win.location.href = gmailLink;
+    if (win && !win.closed) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no Gmail no PC', { id: 'share-em' });
+    toast('PDF aberto — anexe no Gmail', { id: 'share-em' });
     setSharingType(null);
   };
 

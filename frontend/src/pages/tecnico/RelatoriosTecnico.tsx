@@ -77,7 +77,6 @@ export default function RelatoriosTecnico() {
     const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
     const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     const win = window.open('', '_blank');
-    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo WhatsApp...</p>'); } catch {} }
     setActionId(`${r.id}-wa`);
     toast.loading('Preparando PDF...', { id: `wa-${r.id}` });
     const blob = await getPdfBlob(r.id);
@@ -88,22 +87,22 @@ export default function RelatoriosTecnico() {
       return;
     }
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
-        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
         if (win) win.close();
-        toast.success('PDF compartilhado com sucesso!', { id: `wa-${r.id}` });
+        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+        toast.success('PDF compartilhado!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
     const pdfUrl = URL.createObjectURL(blob);
     window.open(pdfUrl, '_blank');
-    if (win) win.location.href = waLink;
+    if (win && !win.closed) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast('PDF aberto em nova aba — arraste para o WhatsApp no PC', { id: `wa-${r.id}` });
+    toast('PDF aberto — arraste para o WhatsApp', { id: `wa-${r.id}` });
     setActionId(null);
   };
 
@@ -112,7 +111,6 @@ export default function RelatoriosTecnico() {
     const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${r.empresaNome}\nSetor: ${r.setorNome}\nNota: ${r.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
     const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
     const win = window.open('', '_blank');
-    if (win) { try { win.document.write('<p style="font-family:sans-serif;padding:20px">Abrindo Gmail...</p>'); } catch {} }
     setActionId(`${r.id}-em`);
     toast.loading('Preparando PDF...', { id: `em-${r.id}` });
     const blob = await getPdfBlob(r.id);
@@ -123,22 +121,22 @@ export default function RelatoriosTecnico() {
       return;
     }
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-    if (navigator.canShare?.({ files: [file] })) {
+    if (navigator.share) {
       try {
-        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
         if (win) win.close();
-        toast.success('PDF compartilhado com sucesso!', { id: `em-${r.id}` });
+        await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
+        toast.success('PDF compartilhado!', { id: `em-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
     const pdfUrl2 = URL.createObjectURL(blob);
     window.open(pdfUrl2, '_blank');
-    if (win) win.location.href = gmailLink;
+    if (win && !win.closed) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast('PDF aberto em nova aba — anexe no Gmail no PC', { id: `em-${r.id}` });
+    toast('PDF aberto — anexe no Gmail', { id: `em-${r.id}` });
     setActionId(null);
   };
 
