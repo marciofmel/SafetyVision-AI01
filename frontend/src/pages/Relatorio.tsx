@@ -60,9 +60,17 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
+    const pdfUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(pdfUrl);
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('Abrindo WhatsApp...', { id: 'share-wa' });
+    toast.success('PDF baixado! Arraste para o WhatsApp no PC.', { id: 'share-wa', duration: 6000 });
     setSharingType(null);
   };
 
@@ -94,9 +102,17 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
+    const pdfUrl2 = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = pdfUrl2;
+    a2.download = fileName;
+    document.body.appendChild(a2);
+    a2.click();
+    document.body.removeChild(a2);
+    URL.revokeObjectURL(pdfUrl2);
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('Abrindo Gmail...', { id: 'share-em' });
+    toast.success('PDF baixado! Anexe no Gmail no PC.', { id: 'share-em', duration: 6000 });
     setSharingType(null);
   };
 

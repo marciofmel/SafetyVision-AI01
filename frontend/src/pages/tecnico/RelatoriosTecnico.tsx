@@ -99,9 +99,17 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
+    const pdfUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(pdfUrl);
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('Abrindo WhatsApp...', { id: `wa-${r.id}` });
+    toast.success('PDF baixado! Arraste para o WhatsApp no PC.', { id: `wa-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 
@@ -132,9 +140,17 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
+    const pdfUrl2 = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = pdfUrl2;
+    a2.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a2);
+    a2.click();
+    document.body.removeChild(a2);
+    URL.revokeObjectURL(pdfUrl2);
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('Abrindo Gmail...', { id: `em-${r.id}` });
+    toast.success('PDF baixado! Anexe no Gmail no PC.', { id: `em-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 
