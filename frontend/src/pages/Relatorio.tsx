@@ -49,16 +49,24 @@ export default function Relatorio() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('Enviado para o app!', { id: 'share-wa' });
+        toast.success('PDF enviado para o app!', { id: 'share-wa' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss('share-wa'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('Abrindo WhatsApp...', { id: 'share-wa' });
+    toast.success('PDF baixado! Anexe no WhatsApp.', { id: 'share-wa', duration: 6000 });
     setSharingType(null);
   };
 
@@ -83,16 +91,24 @@ export default function Relatorio() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
-        toast.success('Enviado para o app!', { id: 'share-em' });
+        toast.success('PDF enviado para o app!', { id: 'share-em' });
         setSharingType(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss('share-em'); setSharingType(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
+    const url2 = URL.createObjectURL(blob);
+    const a2 = document.createElement('a');
+    a2.href = url2;
+    a2.download = fileName;
+    document.body.appendChild(a2);
+    a2.click();
+    document.body.removeChild(a2);
+    URL.revokeObjectURL(url2);
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('Abrindo Gmail...', { id: 'share-em' });
+    toast.success('PDF baixado! Anexe no Gmail.', { id: 'share-em', duration: 6000 });
     setSharingType(null);
   };
 

@@ -88,16 +88,25 @@ export default function RelatoriosTecnico() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('Enviado para o app!', { id: `wa-${r.id}` });
+        toast.success('PDF enviado para o app!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
+    // Fallback desktop: baixa PDF para anexar manualmente (limitação web)
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('Abrindo WhatsApp...', { id: `wa-${r.id}` });
+    toast.success('PDF baixado! Anexe no WhatsApp.', { id: `wa-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 
@@ -121,16 +130,24 @@ export default function RelatoriosTecnico() {
       try {
         if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
-        toast.success('Enviado para o app!', { id: `em-${r.id}` });
+        toast.success('PDF enviado para o app!', { id: `em-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss(`em-${r.id}`); setActionId(null); return; }
+        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('Abrindo Gmail...', { id: `em-${r.id}` });
+    toast.success('PDF baixado! Anexe no Gmail.', { id: `em-${r.id}`, duration: 6000 });
     setActionId(null);
   };
 
