@@ -9,6 +9,7 @@ import empresasRoutes from './routes/empresas';
 import setoresRoutes from './routes/setores';
 import inspecoesRoutes from './routes/inspecoes';
 import analiseRoutes from './routes/analise';
+import relatorioRoutes from './routes/relatorio';
 import usuariosRoutes from './routes/usuarios';
 import colaboradoresRoutes from './routes/colaboradores';
 import cnpjRoutes from './routes/cnpj';
@@ -28,6 +29,7 @@ import adminDataRoutes from './routes/adminData';
 import asoRoutes from './routes/aso';
 import cipaRoutes from './routes/cipa';
 import alertasRoutes from './routes/alertas';
+import relatoriosSalvosRoutes from './routes/relatorios';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -41,6 +43,7 @@ app.use('/api/empresas', authMiddleware, empresasRoutes);
 app.use('/api/setores', authMiddleware, setoresRoutes);
 app.use('/api/inspecoes', authMiddleware, inspecoesRoutes);
 app.use('/api/analise', authMiddleware, analiseRoutes);
+app.use('/api/relatorio', authMiddleware, relatorioRoutes);
 app.use('/api/usuarios', authMiddleware, usuariosRoutes);
 app.use('/api/colaboradores', authMiddleware, colaboradoresRoutes);
 app.use('/api/cnpj', cnpjRoutes);
@@ -60,6 +63,7 @@ app.use('/api/admin-data', authMiddleware, adminDataRoutes);
 app.use('/api/asos', authMiddleware, asoRoutes);
 app.use('/api/cipa', authMiddleware, cipaRoutes);
 app.use('/api/alertas', authMiddleware, alertasRoutes);
+app.use('/api/relatorios', authMiddleware, relatoriosSalvosRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 
