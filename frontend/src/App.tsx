@@ -18,7 +18,7 @@ import EmpresaDetalhe from './pages/tecnico/EmpresaDetalhe';
 import ColaboradoresTecnico from './pages/tecnico/ColaboradoresTecnico';
 import SetoresTecnico from './pages/tecnico/SetoresTecnico';
 import NRTecnico from './pages/tecnico/NRTecnico';
-import RelatoriosTecnico from './pages/tecnico/RelatoriosTecnico';
+
 import ConfigTecnico from './pages/tecnico/ConfigTecnico';
 import ChecklistsTecnico from './pages/tecnico/ChecklistsTecnico';
 import CalculadoraNR28 from './pages/tecnico/CalculadoraNR28';
@@ -35,8 +35,6 @@ import CIPATecnico from './pages/tecnico/CIPATecnico';
 import DashboardAdminGlobal from './pages/admin/DashboardAdminGlobal';
 import NovaInspecao from './pages/NovaInspecao';
 import AnaliseIA from './pages/AnaliseIA';
-import Relatorio from './pages/Relatorio';
-import EditarRelatorio from './pages/tecnico/EditarRelatorio';
 import Historico from './pages/Historico';
 import TecnicoLayout from './components/TecnicoLayout';
 
@@ -93,8 +91,6 @@ export default function App() {
         <Route path="colaboradores" element={<ColaboradoresTecnico />} />
         <Route path="setores" element={<SetoresTecnico />} />
         <Route path="analise/:id" element={<AnaliseIA />} />
-        <Route path="relatorio/:id" element={<Relatorio />} />
-        <Route path="relatorio/:id/editar" element={<EditarRelatorio />} />
         <Route path="historico" element={<Historico />} />
         <Route path="checklists" element={<ChecklistsTecnico />} />
         <Route path="calculadora-nr28" element={<CalculadoraNR28 />} />
@@ -110,7 +106,7 @@ export default function App() {
         <Route path="cipa" element={<CIPATecnico />} />
         <Route path="nrs" element={<NRTecnico />} />
         <Route path="configuracoes" element={<ConfigTecnico />} />
-        <Route path="relatorios" element={<RelatoriosTecnico />} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />
