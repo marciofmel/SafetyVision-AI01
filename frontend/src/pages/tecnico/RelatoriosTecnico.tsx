@@ -70,107 +70,56 @@ export default function RelatoriosTecnico() {
   };
 
   const compartilharWhatsApp = async (r: Relatorio) => {
-    const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
-    const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-    const win = window.open('', '_blank');
     setActionId(`${r.id}-wa`);
     toast.loading('Preparando PDF...', { id: `wa-${r.id}` });
-
     const blob = await getPdfBlob(r.id);
     if (!blob) {
-      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: `wa-${r.id}` });
       setActionId(null);
       return;
     }
-
+    const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF compartilhado!', { id: `wa-${r.id}` });
+        toast.success('Enviado para o app!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') {
-          toast.dismiss(`wa-${r.id}`);
-          setActionId(null);
-          return;
-        }
+        if (err.name === 'AbortError') { toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    if (win) win.location.href = waLink;
-    else window.open(waLink, '_blank');
-    toast.success('PDF baixado! Anexe no WhatsApp.', { id: `wa-${r.id}`, duration: 6000 });
+    // Fallback desktop: abre WhatsApp com texto (sem download)
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF disponível no app SafetyVision.')}`, '_blank');
+    toast.success('Abrindo WhatsApp...', { id: `wa-${r.id}` });
     setActionId(null);
   };
 
   const compartilharEmail = async (r: Relatorio) => {
-    const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
-    const corpo = encodeURIComponent(
-      `Prezado(a),\n\n` +
-      `Segue o relatório de inspeção de segurança do trabalho.\n\n` +
-      `Empresa: ${r.empresaNome}\nSetor: ${r.setorNome}\n` +
-      `Nota de Conformidade: ${r.notaConformidade ?? '---'}/100\n` +
-      `Data: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}\n\n` +
-      `O PDF foi baixado. Anexe-o a este email.\n\n` +
-      `Att,\nSafetyVision AI`
-    );
-    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
-    const win = window.open('', '_blank');
     setActionId(`${r.id}-em`);
     toast.loading('Preparando PDF...', { id: `em-${r.id}` });
-
     const blob = await getPdfBlob(r.id);
     if (!blob) {
-      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: `em-${r.id}` });
       setActionId(null);
       return;
     }
-
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
-
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
-        toast.success('PDF compartilhado!', { id: `em-${r.id}` });
+        toast.success('Enviado para o app!', { id: `em-${r.id}` });
         setActionId(null);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') {
-          toast.dismiss(`em-${r.id}`);
-          setActionId(null);
-          return;
-        }
+        if (err.name === 'AbortError') { toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    if (win) win.location.href = gmailLink;
-    else window.open(gmailLink, '_blank');
-    toast.success('PDF baixado! Anexe no Gmail.', { id: `em-${r.id}`, duration: 6000 });
+    const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
+    const corpo = encodeURIComponent(`Prezado(a),\n\nSegue o relatório em anexo.\n\nEmpresa: ${r.empresaNome}\nSetor: ${r.setorNome}\nNota: ${r.notaConformidade ?? '---'}/100\n\nAtt,\nSafetyVision AI`);
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    toast.success('Abrindo Gmail...', { id: `em-${r.id}` });
     setActionId(null);
   };
 
