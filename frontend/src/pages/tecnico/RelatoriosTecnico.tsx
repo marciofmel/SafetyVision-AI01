@@ -90,8 +90,8 @@ export default function RelatoriosTecnico() {
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+        if (win) win.close();
         toast.success('PDF compartilhado com sucesso!', { id: `wa-${r.id}` });
         setActionId(null);
         return;
@@ -99,8 +99,9 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`wa-${r.id}`); setActionId(null); return; }
       }
     }
-    if (win) win.close();
-    toast.error('Seu navegador não suporta envio direto de PDF. Abra no celular para compartilhar com PDF anexado.', { id: `wa-${r.id}`, duration: 6000 });
+    if (win) win.location.href = waLink;
+    else window.open(waLink, '_blank');
+    toast.success('Abrindo WhatsApp...', { id: `wa-${r.id}` });
     setActionId(null);
   };
 
@@ -122,8 +123,8 @@ export default function RelatoriosTecnico() {
     const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório SST - ${r.empresaNome}`, files: [file] });
+        if (win) win.close();
         toast.success('PDF compartilhado com sucesso!', { id: `em-${r.id}` });
         setActionId(null);
         return;
@@ -131,8 +132,9 @@ export default function RelatoriosTecnico() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss(`em-${r.id}`); setActionId(null); return; }
       }
     }
-    if (win) win.close();
-    toast.error('Seu navegador não suporta envio direto de PDF. Abra no celular para compartilhar com PDF anexado.', { id: `em-${r.id}`, duration: 6000 });
+    if (win) win.location.href = gmailLink;
+    else window.open(gmailLink, '_blank');
+    toast.success('Abrindo Gmail...', { id: `em-${r.id}` });
     setActionId(null);
   };
 

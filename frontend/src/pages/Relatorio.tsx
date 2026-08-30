@@ -51,8 +51,8 @@ export default function Relatorio() {
     const file = new File([blob], fileName, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+        if (win) win.close();
         toast.success('PDF compartilhado com sucesso!', { id: 'share-wa' });
         setSharingType(null);
         return;
@@ -60,8 +60,9 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
       }
     }
-    if (win) win.close();
-    toast.error('Seu navegador não suporta compartilhamento de PDF. Abra no celular.', { id: 'share-wa', duration: 6000 });
+    if (win) win.location.href = waLink;
+    else window.open(waLink, '_blank');
+    toast.success('Abrindo WhatsApp...', { id: 'share-wa' });
     setSharingType(null);
   };
 
@@ -84,8 +85,8 @@ export default function Relatorio() {
     const file = new File([blob], fileName, { type: 'application/pdf' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
+        if (win) win.close();
         toast.success('PDF compartilhado com sucesso!', { id: 'share-em' });
         setSharingType(null);
         return;
@@ -93,8 +94,9 @@ export default function Relatorio() {
         if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
       }
     }
-    if (win) win.close();
-    toast.error('Seu navegador não suporta compartilhamento de PDF. Abra no celular.', { id: 'share-em', duration: 6000 });
+    if (win) win.location.href = gmailLink;
+    else window.open(gmailLink, '_blank');
+    toast.success('Abrindo Gmail...', { id: 'share-em' });
     setSharingType(null);
   };
 
