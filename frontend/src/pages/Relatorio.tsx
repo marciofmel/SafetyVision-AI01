@@ -30,22 +30,26 @@ export default function Relatorio() {
   };
 
   const shareWhatsApp = async () => {
+    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
+    const waLink = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    const win = window.open('', '_blank');
     setSharing(true);
     toast.loading('Preparando PDF...', { id: 'share-wa' });
 
     const blob = await getPdfBlob();
     if (!blob) {
+      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-wa' });
       setSharing(false);
       return;
     }
 
-    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
     const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
     const file = new File([blob], fileName, { type: 'application/pdf' });
 
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
+        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
         toast.success('PDF compartilhado!', { id: 'share-wa' });
         setSharing(false);
@@ -68,17 +72,34 @@ export default function Relatorio() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF anexado.')}`, '_blank');
+    if (win) win.location.href = waLink;
+    else window.open(waLink, '_blank');
     toast.success('PDF baixado! Anexe no WhatsApp.', { id: 'share-wa', duration: 6000 });
     setSharing(false);
   };
 
   const shareEmail = async () => {
+    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'} - ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`);
+    const corpo = encodeURIComponent(
+      `Prezado(a),\n\n` +
+      `Segue o Relatório de Inspeção de Segurança do Trabalho.\n\n` +
+      `Dados da Inspeção:\n` +
+      `• Empresa: ${inspecao.empresa?.nome || '---'}\n` +
+      `• Setor: ${inspecao.setor?.nome || '---'}\n` +
+      `• Nota de Conformidade: ${inspecao.notaConformidade ?? '---'}/100\n` +
+      `• Riscos Identificados: ${inspecao.riscos?.length || 0}\n` +
+      `• Data: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}\n\n` +
+      `O PDF foi baixado. Anexe-o a este email.\n\n` +
+      `Att,\n${inspecao.usuario?.nome || 'Técnico SafetyVision'}\nSafetyVision AI`
+    );
+    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
+    const win = window.open('', '_blank');
     setSharing(true);
     toast.loading('Preparando PDF...', { id: 'share-em' });
 
     const blob = await getPdfBlob();
     if (!blob) {
+      if (win) win.close();
       toast.error('Erro ao obter PDF', { id: 'share-em' });
       setSharing(false);
       return;
@@ -89,6 +110,7 @@ export default function Relatorio() {
 
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
+        if (win) win.close();
         await navigator.share({ title: 'Relatório SafetyVision', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`, files: [file] });
         toast.success('PDF compartilhado!', { id: 'share-em' });
         setSharing(false);
@@ -111,22 +133,8 @@ export default function Relatorio() {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
-    const downloadUrl = `${window.location.origin}/api/relatorio/${id}/relatorio`;
-    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'} - ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`);
-    const corpo = encodeURIComponent(
-      `Prezado(a),\n\n` +
-      `Segue o Relatório de Inspeção de Segurança do Trabalho.\n\n` +
-      `Dados da Inspeção:\n` +
-      `• Empresa: ${inspecao.empresa?.nome || '---'}\n` +
-      `• Setor: ${inspecao.setor?.nome || '---'}\n` +
-      `• Nota de Conformidade: ${inspecao.notaConformidade ?? '---'}/100\n` +
-      `• Riscos Identificados: ${inspecao.riscos?.length || 0}\n` +
-      `• Data: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}\n\n` +
-      `O PDF está anexo a este email.\n` +
-      `Ou acesse: ${downloadUrl}\n\n` +
-      `Att,\n${inspecao.usuario?.nome || 'Técnico SafetyVision'}\nSafetyVision AI`
-    );
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    if (win) win.location.href = gmailLink;
+    else window.open(gmailLink, '_blank');
     toast.success('PDF baixado! Anexe no Gmail.', { id: 'share-em', duration: 6000 });
     setSharing(false);
   };
