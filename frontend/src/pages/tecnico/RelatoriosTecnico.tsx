@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2, FiLoader } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2, FiLoader, FiEye } from 'react-icons/fi';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,7 @@ interface Relatorio {
 }
 
 export default function RelatoriosTecnico() {
+  const navigate = useNavigate();
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -167,6 +169,9 @@ export default function RelatoriosTecnico() {
                   {r.notaConformidade ?? '---'}/100
                 </span>
 
+                <button onClick={() => navigate(`/relatorio/${r.inspecaoId}`)} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Ver Relatório">
+                  <FiEye size={16} />
+                </button>
                 <button onClick={() => baixar(r)} disabled={isLoading(r.id, 'dl')} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Baixar PDF">
                   {isLoading(r.id, 'dl') ? <FiLoader size={16} className="animate-spin" /> : <FiDownload size={16} />}
                 </button>
