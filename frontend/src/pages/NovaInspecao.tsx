@@ -9,6 +9,10 @@ export default function NovaInspecao() {
   const [setores, setSetores] = useState<any[]>([]);
   const [empresaId, setEmpresaId] = useState('');
   const [setorId, setSetorId] = useState('');
+  const [objetivo, setObjetivo] = useState('Registrar as condições de segurança e saúde no trabalho, identificando situações de risco, não conformidades e oportunidades de melhoria.');
+  const [escopo, setEscopo] = useState('A inspeção abrangeu as áreas operacionais do canteiro de obras.');
+  const [limitacoes, setLimitacoes] = useState('Avaliações baseadas nas condições observadas no momento da inspeção.');
+  const [metodologia, setMetodologia] = useState('Inspeção visual, registro fotográfico, checklist de conformidade, análise de riscos, avaliação de EPIs e EPCs.');
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -106,7 +110,7 @@ export default function NovaInspecao() {
   const handleStartInspection = async () => {
     if (!empresaId || !setorId) return toast.error('Selecione empresa e setor');
     try {
-      const { data } = await api.post('/inspecoes', { empresaId, setorId });
+      const { data } = await api.post('/inspecoes', { empresaId, setorId, objetivo, escopo, limitacoes, metodologia });
       setInspecaoId(data.id);
       setStep(2);
       toast.success('Inspeção criada! Adicione fotos.');
@@ -241,6 +245,29 @@ export default function NovaInspecao() {
                 {empresas.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}
               </select>
             )}
+          </div>
+
+          {/* Objetivo, Escopo, Metodologia */}
+          <div className="card p-4 sm:p-6">
+            <h3 className="text-lg font-bold text-navy-900">Detalhes do Relatório</h3>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-navy-500">Objetivo</label>
+                <textarea value={objetivo} onChange={e => setObjetivo(e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-navy-200 p-3 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-navy-500">Escopo</label>
+                <textarea value={escopo} onChange={e => setEscopo(e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-navy-200 p-3 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-navy-500">Limitações</label>
+                <textarea value={limitacoes} onChange={e => setLimitacoes(e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-navy-200 p-3 text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-navy-500">Metodologia</label>
+                <textarea value={metodologia} onChange={e => setMetodologia(e.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-navy-200 p-3 text-sm" />
+              </div>
+            </div>
           </div>
 
           {/* Setor */}

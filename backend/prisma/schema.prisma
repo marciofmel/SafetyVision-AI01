@@ -160,12 +160,16 @@ model Inspecao {
   dataFim         DateTime?
   totalFotos      Int       @default(0)
   totalVideos     Int       @default(0)
-  notaConformidade Float?
-  observacoes     String?
-  latitude        Float?
-  longitude       Float?
-  createdAt       DateTime  @default(now())
-  midias          Midia[]
+    notaConformidade Float?
+    observacoes     String?
+    objetivo        String?
+    escopo          String?
+    limitacoes      String?
+    metodologia     String?
+    latitude        Float?
+    longitude       Float?
+    createdAt       DateTime  @default(now())
+    midias          Midia[]
   riscos          Risco[]
   epiViolacoes    EpiViolacao[]
   checklistRespostas ChecklistResposta[]
