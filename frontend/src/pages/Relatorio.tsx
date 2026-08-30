@@ -11,7 +11,7 @@ export default function Relatorio() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [sharingType, setSharingType] = useState<'share' | 'wa' | 'em' | null>(null);
+  const [sharing, setSharing] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
   const pdfCacheRef = useRef<Blob | null>(null);
 
@@ -25,10 +25,7 @@ export default function Relatorio() {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
-      if (blob.type !== 'application/pdf' || blob.size === 0) {
-        console.error('Blob inválido', blob.type, blob.size);
-        return null;
-      }
+      if (blob.type !== 'application/pdf' || blob.size === 0) return null;
       pdfCacheRef.current = blob;
       return blob;
     } catch (err: any) {
@@ -43,6 +40,20 @@ export default function Relatorio() {
     return new File([blob], fileName, { type: 'application/pdf' });
   };
 
+  useEffect(() => {
+    api.get(`/inspecoes/${id}`).then(({ data }) => {
+      setInspecao(data);
+      setLoading(false);
+      fetch(`/api/relatorio/${id}/relatorio`, { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(res => res.ok ? res.blob() : null)
+        .then(blob => { if (blob && blob.type === 'application/pdf' && blob.size > 0) pdfCacheRef.current = blob; })
+        .catch(() => {});
+    }).catch(() => {
+      toast.error('Erro ao carregar inspeção');
+      setLoading(false);
+    });
+  }, [id]);
+
   const baixarPDF = async () => {
     setDownloading(true);
     toast.loading('Baixando PDF...', { id: 'download' });
@@ -54,7 +65,7 @@ export default function Relatorio() {
     }
     const file = createPdfFile(blob);
     if (file.type !== 'application/pdf' || file.size === 0 || !file.name.endsWith('.pdf')) {
-      toast.error('Arquivo PDF inválido', { id: 'download' });
+      toast.error('PDF inválido', { id: 'download' });
       setDownloading(false);
       return;
     }
@@ -71,29 +82,28 @@ export default function Relatorio() {
   };
 
   const compartilharPDF = async () => {
-    setSharingType('share');
+    setSharing(true);
     toast.loading('Preparando PDF...', { id: 'share-pdf' });
     const blob = await getPdfBlob();
     if (!blob) {
       toast.error('Erro ao obter PDF', { id: 'share-pdf' });
-      setSharingType(null);
+      setSharing(false);
       return;
     }
     const pdfFile = createPdfFile(blob);
-    if (pdfFile.size === 0 || pdfFile.type !== 'application/pdf' || !pdfFile.name.endsWith('.pdf')) {
+    if (pdfFile.type !== 'application/pdf' || pdfFile.size === 0 || !pdfFile.name.endsWith('.pdf')) {
       toast.error('PDF inválido', { id: 'share-pdf' });
-      setSharingType(null);
+      setSharing(false);
       return;
     }
-    if (navigator.canShare?.({ files: [pdfFile] })) {
+    if (navigator.share) {
       try {
         await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: 'Relatório de Inspeção SST' });
         toast.success('PDF compartilhado!', { id: 'share-pdf' });
-        setSharingType(null);
+        setSharing(false);
         return;
       } catch (err: any) {
-        if (err.name === 'AbortError') { toast.dismiss('share-pdf'); setSharingType(null); return; }
-        console.error('share error', err);
+        if (err.name === 'AbortError') { toast.dismiss('share-pdf'); setSharing(false); return; }
       }
     }
     const url = URL.createObjectURL(blob);
@@ -105,95 +115,8 @@ export default function Relatorio() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('PDF baixado — seu dispositivo não permite compartilhar direto', { id: 'share-pdf', duration: 5000 });
-    setSharingType(null);
+    setSharing(false);
   };
-
-  const shareWhatsApp = async () => {
-    const win = window.open('', '_blank');
-    setSharingType('wa');
-    toast.loading('Preparando PDF...', { id: 'share-wa' });
-    const blob = await getPdfBlob();
-    if (!blob) {
-      if (win) win.close();
-      toast.error('Erro ao obter PDF', { id: 'share-wa' });
-      setSharingType(null);
-      return;
-    }
-    const pdfFile = createPdfFile(blob);
-    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
-    if (navigator.canShare?.({ files: [pdfFile] })) {
-      try {
-        await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: texto });
-        if (win) win.close();
-        toast.success('PDF enviado para o WhatsApp!', { id: 'share-wa' });
-        setSharingType(null);
-        return;
-      } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-wa'); setSharingType(null); return; }
-      }
-    }
-    if (win) win.close();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = pdfFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast('Seu dispositivo não permite anexar PDF direto no WhatsApp. PDF baixado — anexe manualmente.', { id: 'share-wa', duration: 7000 });
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-    setSharingType(null);
-  };
-
-  const shareEmail = async () => {
-    const win = window.open('', '_blank');
-    setSharingType('em');
-    toast.loading('Preparando PDF...', { id: 'share-em' });
-    const blob = await getPdfBlob();
-    if (!blob) {
-      if (win) win.close();
-      toast.error('Erro ao obter PDF', { id: 'share-em' });
-      setSharingType(null);
-      return;
-    }
-    const pdfFile = createPdfFile(blob);
-    if (navigator.canShare?.({ files: [pdfFile] })) {
-      try {
-        await navigator.share({ files: [pdfFile], title: 'Relatório de Inspeção SST', text: `Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}` });
-        if (win) win.close();
-        toast.success('PDF compartilhado por e-mail!', { id: 'share-em' });
-        setSharingType(null);
-        return;
-      } catch (err: any) {
-        if (err.name === 'AbortError') { if (win) win.close(); toast.dismiss('share-em'); setSharingType(null); return; }
-      }
-    }
-    if (win) win.close();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = pdfFile.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'}`);
-    const corpo = encodeURIComponent(`Olá,\n\nSegue em anexo o Relatório de Inspeção SST.\n\nEmpresa: ${inspecao.empresa?.nome || '---'}\nSetor: ${inspecao.setor?.nome || '---'}\nNota: ${inspecao.notaConformidade ?? '---'}/100\n\nO PDF foi baixado — anexe-o a este e-mail.\n\nAtt,\nSafetyVision AI`);
-    window.open(`mailto:?subject=${assunto}&body=${corpo}`, '_blank');
-    toast('PDF baixado — anexe-o ao e-mail.', { id: 'share-em', duration: 7000 });
-    setSharingType(null);
-  };
-
-  useEffect(() => {
-    api.get(`/inspecoes/${id}`).then(({ data }) => {
-      setInspecao(data);
-      setLoading(false);
-    }).catch(() => {
-      toast.error('Erro ao carregar inspeção');
-      setLoading(false);
-    });
-  }, [id]);
 
   if (loading) {
     return (
@@ -268,19 +191,9 @@ export default function Relatorio() {
             {downloading ? 'Baixando...' : '⬇️ Baixar PDF'}
           </button>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <button onClick={compartilharPDF} disabled={sharingType !== null} className="flex items-center justify-center gap-2 rounded-xl border-2 border-purple-200 bg-purple-50 py-3 text-sm font-bold text-purple-700 hover:bg-purple-100 disabled:opacity-50">
-              {sharingType === 'share' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              📤 Compartilhar PDF
-            </button>
-            <button onClick={shareWhatsApp} disabled={sharingType !== null} className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 hover:bg-green-100 disabled:opacity-50">
-              {sharingType === 'wa' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              🟢 WhatsApp
-            </button>
-          </div>
-          <button onClick={shareEmail} disabled={sharingType !== null} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 hover:bg-blue-100 disabled:opacity-50">
-            {sharingType === 'em' ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-            ✉️ E-mail
+          <button onClick={compartilharPDF} disabled={sharing} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-4 text-base font-bold text-white hover:bg-purple-700 disabled:opacity-50">
+            {sharing ? <FiLoader className="animate-spin" size={18} /> : <FiShare2 size={18} />}
+            📤 Compartilhar PDF
           </button>
 
           <button onClick={() => { setShowDetails(!showDetails); setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-200 bg-navy-50 py-3 text-sm font-bold text-navy-700 hover:bg-navy-100">
@@ -341,4 +254,3 @@ export default function Relatorio() {
     </div>
   );
 }
-
