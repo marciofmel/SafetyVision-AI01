@@ -12,6 +12,9 @@ export default function Relatorio() {
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editObs, setEditObs] = useState('');
+  const [editNota, setEditNota] = useState('');
   const detailsRef = useRef<HTMLDivElement>(null);
   const pdfCacheRef = useRef<Blob | null>(null);
 
@@ -43,6 +46,8 @@ export default function Relatorio() {
   useEffect(() => {
     api.get(`/inspecoes/${id}`).then(({ data }) => {
       setInspecao(data);
+      setEditObs(data.observacoes || '');
+      setEditNota(String(data.notaConformidade ?? ''));
       setLoading(false);
       fetch(`/api/relatorio/${id}/relatorio`, { headers: { Authorization: `Bearer ${getToken()}` } })
         .then(res => res.ok ? res.blob() : null)
@@ -53,6 +58,18 @@ export default function Relatorio() {
       setLoading(false);
     });
   }, [id]);
+
+  const salvarEdicao = async () => {
+    try {
+      const { data } = await api.put(`/inspecoes/${id}`, { observacoes: editObs, notaConformidade: parseFloat(editNota) || null });
+      setInspecao(data);
+      pdfCacheRef.current = null;
+      setEditing(false);
+      toast.success('Relatório atualizado!');
+    } catch {
+      toast.error('Erro ao salvar');
+    }
+  };
 
   const baixarPDF = async () => {
     setDownloading(true);
@@ -185,6 +202,24 @@ export default function Relatorio() {
               <p className="text-xs text-navy-400">Fotos Analisadas</p>
             </div>
           </div>
+
+          {!editing ? (
+            <button onClick={() => setEditing(true)} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-amber-200 bg-amber-50 py-3 text-sm font-bold text-amber-700 hover:bg-amber-100">
+              ✏️ Editar Relatório
+            </button>
+          ) : (
+            <div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4">
+              <p className="mb-2 text-sm font-bold text-amber-700">Editar Relatório</p>
+              <label className="text-xs font-bold text-navy-500">Observações</label>
+              <textarea value={editObs} onChange={e => setEditObs(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-navy-200 p-2 text-sm" placeholder="Observações..." />
+              <label className="mt-2 block text-xs font-bold text-navy-500">Nota de Conformidade</label>
+              <input value={editNota} onChange={e => setEditNota(e.target.value)} type="number" min="0" max="100" className="mt-1 w-full rounded-lg border border-navy-200 p-2 text-sm" placeholder="0-100" />
+              <div className="mt-3 flex gap-2">
+                <button onClick={salvarEdicao} className="flex-1 rounded-xl bg-amber-500 py-2 text-sm font-bold text-white hover:bg-amber-600">Salvar</button>
+                <button onClick={() => setEditing(false)} className="flex-1 rounded-xl border border-navy-200 bg-white py-2 text-sm font-bold text-navy-600">Cancelar</button>
+              </div>
+            </div>
+          )}
 
           <button onClick={baixarPDF} disabled={downloading} className="btn-primary w-full py-4 text-base disabled:opacity-50">
             {downloading ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
