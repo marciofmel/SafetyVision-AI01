@@ -70,12 +70,17 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
           const episComRegiao = resultado.epiViolacoes || [];
 
           for (const risco of riscosComRegiao) {
+            let imagemBase64: string | null = null;
+            if (midia.tipo === 'foto' && midia.dadosBase64) {
+              imagemBase64 = midia.dadosBase64;
+            }
             const created = await prisma.risco.create({
               data: {
                 categoria: risco.categoria,
                 descricao: risco.descricao,
                 localIdentificado: risco.localIdentificado,
                 imagemUrl: midia.url,
+                imagemBase64,
                 confianca: risco.confianca,
                 gravidade: risco.gravidade,
                 consequencias: risco.consequencias,
@@ -90,6 +95,10 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
           }
 
           for (const epi of episComRegiao) {
+            let imagemBase64: string | null = null;
+            if (midia.tipo === 'foto' && midia.dadosBase64) {
+              imagemBase64 = midia.dadosBase64;
+            }
             const created = await prisma.epiViolacao.create({
               data: {
                 epiNome: epi.epiNome,
@@ -97,6 +106,7 @@ router.post('/:inspecaoId/analisar', async (req: AuthRequest, res) => {
                 confianca: epi.confianca,
                 descricao: epi.descricao,
                 imagemUrl: midia.url,
+                imagemBase64,
                 inspecaoId: inspecao.id,
               },
             });

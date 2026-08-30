@@ -14,107 +14,106 @@ export default function Relatorio() {
   const [sharing, setSharing] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
 
-  const getPDFBlob = async (): Promise<Blob> => {
-    const token = localStorage.getItem('sv_token');
-    const response = await fetch(`/api/relatorios/${id}/gerar`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) throw new Error('Erro ao gerar PDF');
-    return await response.blob();
+  const getToken = () => localStorage.getItem('sv_token') || '';
+
+  const downloadPdfBlob = async (): Promise<Blob | null> => {
+    try {
+      const response = await fetch(`/api/relatorios/${id}/gerar`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.blob();
+    } catch (err: any) {
+      console.error('Erro ao gerar PDF:', err);
+      return null;
+    }
   };
 
   const shareWhatsApp = async () => {
     setSharing(true);
-    try {
-      const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
-      const link = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    toast.loading('Gerando PDF...', { id: 'share-wa' });
 
-      // Abre WhatsApp IMEDIATAMENTE (síncrono) para não ser bloqueado
-      const win = window.open('', '_blank');
+    const blob = await downloadPdfBlob();
+    if (!blob) {
+      toast.error('Erro ao gerar PDF', { id: 'share-wa' });
+      setSharing(false);
+      return;
+    }
 
-      const blob = await getPDFBlob();
-      const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
-      const file = new File([blob], fileName, { type: 'application/pdf' });
+    const texto = `Relatório de Inspeção SST - ${inspecao.empresa?.nome || ''} - Nota: ${inspecao.notaConformidade ?? '---'}/100`;
+    const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+    const file = new File([blob], fileName, { type: 'application/pdf' });
 
-      // Tentar Web Share API (funciona em mobile e desktop Chrome)
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        if (win) win.close();
+    // Web Share API (funciona em mobile e Chrome desktop)
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
         await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
-        toast.success('PDF compartilhado!');
+        toast.success('Compartilhado!', { id: 'share-wa' });
         setSharing(false);
         return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          toast.dismiss('share-wa');
+          setSharing(false);
+          return;
+        }
       }
-
-      // Baixar PDF
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-
-      // Redireciona janela para WhatsApp
-      if (win) {
-        win.location.href = link;
-      }
-      toast.success('PDF baixado! Anexe no WhatsApp.', { duration: 5000 });
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        toast.error('Erro ao compartilhar');
-      }
-    } finally {
-      setSharing(false);
     }
+
+    // Fallback: baixa o PDF e abre WhatsApp
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF baixado. Anexe-o na conversa.')}`, '_blank');
+    toast.success('PDF baixado! Anexe no WhatsApp.', { id: 'share-wa', duration: 6000 });
+    setSharing(false);
   };
 
   const shareEmail = async () => {
     setSharing(true);
-    try {
-      const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'} - ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`);
-      const corpo = encodeURIComponent(
-        `Prezado(a),\n\n` +
-        `Segue em anexo o Relatório de Inspeção de Segurança do Trabalho.\n\n` +
-        `Dados da Inspeção:\n` +
-        `• Empresa: ${inspecao.empresa?.nome || '---'}\n` +
-        `• Setor: ${inspecao.setor?.nome || '---'}\n` +
-        `• Nota de Conformidade: ${inspecao.notaConformidade ?? '---'}/100\n` +
-        `• Riscos Identificados: ${inspecao.riscos?.length || 0}\n` +
-        `• EPIs Ausentes: ${inspecao.epiViolacoes?.filter((e: any) => e.status === 'ausente').length || 0}\n` +
-        `• Fotos Analisadas: ${inspecao.midias?.length || 0}\n` +
-        `• Data: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}\n\n` +
-        `O PDF está anexado a este email.\n\n` +
-        `Att,\n${inspecao.usuario?.nome || 'Técnico SafetyVision'}\nSafetyVision AI`
-      );
-      const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
+    toast.loading('Gerando PDF...', { id: 'share-em' });
 
-      // Abre Gmail IMEDIATAMENTE (síncrono) para não ser bloqueado
-      const win = window.open('', '_blank');
-
-      const blob = await getPDFBlob();
-      const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
-
-      // Baixa o PDF
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-
-      // Redireciona janela para Gmail
-      if (win) {
-        win.location.href = gmailLink;
-      }
-      toast.success('PDF baixado! Anexe no Gmail.', { duration: 5000 });
-    } catch (err) {
-      toast.error('Erro ao preparar email');
-    } finally {
+    const blob = await downloadPdfBlob();
+    if (!blob) {
+      toast.error('Erro ao gerar PDF', { id: 'share-em' });
       setSharing(false);
+      return;
     }
+
+    // Baixa o PDF
+    const fileName = `relatorio-${inspecao.empresa?.nome || 'inspecao'}.pdf`;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    // Abre Gmail com dados no corpo
+    const assunto = encodeURIComponent(`Relatório de Inspeção - ${inspecao.empresa?.nome || '---'} - ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}`);
+    const corpo = encodeURIComponent(
+      `Prezado(a),\n\n` +
+      `Segue o Relatório de Inspeção de Segurança do Trabalho.\n\n` +
+      `Dados da Inspeção:\n` +
+      `• Empresa: ${inspecao.empresa?.nome || '---'}\n` +
+      `• Setor: ${inspecao.setor?.nome || '---'}\n` +
+      `• Nota de Conformidade: ${inspecao.notaConformidade ?? '---'}/100\n` +
+      `• Riscos Identificados: ${inspecao.riscos?.length || 0}\n` +
+      `• Data: ${new Date(inspecao.dataInicio).toLocaleDateString('pt-BR')}\n\n` +
+      `O PDF foi baixado no seu computador. Anexe-o a este email.\n\n` +
+      `Att,\n${inspecao.usuario?.nome || 'Técnico SafetyVision'}\nSafetyVision AI`
+    );
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    toast.success('PDF baixado! Anexe no Gmail.', { id: 'share-em', duration: 6000 });
+    setSharing(false);
   };
 
   useEffect(() => {
@@ -129,22 +128,25 @@ export default function Relatorio() {
 
   const downloadPDF = async () => {
     setDownloading(true);
-    try {
-      const blob = await getPDFBlob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `relatorio-${inspecao.empresa?.nome || id?.slice(0, 8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success('PDF baixado e salvo na plataforma!');
-    } catch (err) {
-      toast.error('Erro ao baixar relatório');
-    } finally {
+    toast.loading('Gerando PDF...', { id: 'download' });
+
+    const blob = await downloadPdfBlob();
+    if (!blob) {
+      toast.error('Erro ao baixar relatório', { id: 'download' });
       setDownloading(false);
+      return;
     }
+
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio-${inspecao.empresa?.nome || id?.slice(0, 8)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    toast.success('PDF baixado!', { id: 'download' });
+    setDownloading(false);
   };
 
   if (loading) {
@@ -219,7 +221,7 @@ export default function Relatorio() {
 
           <button onClick={downloadPDF} disabled={downloading} className="btn-primary w-full py-4 text-base disabled:opacity-50">
             {downloading ? <FiLoader className="animate-spin" size={18} /> : <FiDownload size={18} />}
-            {downloading ? 'Baixando...' : 'Baixar Relatório PDF'}
+            {downloading ? 'Gerando PDF...' : 'Baixar Relatório PDF'}
           </button>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
@@ -229,7 +231,7 @@ export default function Relatorio() {
               className="flex items-center justify-center gap-2 rounded-xl border-2 border-green-200 bg-green-50 py-3 text-sm font-bold text-green-700 transition-all hover:bg-green-100 disabled:opacity-50"
             >
               {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharing ? 'Preparando...' : 'Enviar PDF WhatsApp'}
+              {sharing ? 'Gerando PDF...' : 'Enviar PDF WhatsApp'}
             </button>
             <button
               onClick={shareEmail}
@@ -237,7 +239,7 @@ export default function Relatorio() {
               className="flex items-center justify-center gap-2 rounded-xl border-2 border-blue-200 bg-blue-50 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
             >
               {sharing ? <FiLoader className="animate-spin" size={16} /> : <FiShare2 size={16} />}
-              {sharing ? 'Preparando...' : 'Enviar PDF Email'}
+              {sharing ? 'Gerando PDF...' : 'Enviar PDF Email'}
             </button>
           </div>
 

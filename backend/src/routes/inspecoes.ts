@@ -97,8 +97,16 @@ router.post('/:id/midias', upload.array('files', 20), async (req: AuthRequest, r
     for (const file of files) {
       const tipo = file.mimetype.startsWith('video/') ? 'video' : 'foto';
       if (tipo === 'foto') fotos++; else videos++;
+      let dadosBase64: string | null = null;
+      if (tipo === 'foto') {
+        try {
+          const filePath = path.join(uploadDir, file.filename);
+          const buf = fs.readFileSync(filePath);
+          dadosBase64 = `data:${file.mimetype};base64,${buf.toString('base64')}`;
+        } catch {}
+      }
       const midia = await prisma.midia.create({
-        data: { inspecaoId: id, tipo, url: `/uploads/${file.filename}`, nome: file.originalname },
+        data: { inspecaoId: id, tipo, url: `/uploads/${file.filename}`, nome: file.originalname, dadosBase64 },
       });
       midias.push(midia);
     }

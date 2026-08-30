@@ -173,8 +173,13 @@ function buildTemplateData(data: RenderData) {
     const g = r.gravidade?.toLowerCase() || '';
     let imgData = '';
     if (r.imagemUrl) {
-      const imgPath = path.join(uploadsDir, r.imagemUrl.replace('/uploads/', ''));
-      imgData = imageToDataUri(imgPath) || '';
+      // Tenta base64 do risco primeiro
+      if (r.imagemBase64) {
+        imgData = r.imagemBase64;
+      } else {
+        const imgPath = path.join(uploadsDir, r.imagemUrl.replace('/uploads/', ''));
+        imgData = imageToDataUri(imgPath) || '';
+      }
     }
     return {
       number: String(i + 1).padStart(3, '0'),
@@ -220,10 +225,17 @@ function buildTemplateData(data: RenderData) {
   // Photos
   const fotos = (inspecao.midias || []).filter((m: any) => m.tipo === 'foto');
   const photos = fotos.map((f: any, i: number) => {
-    const imgPath = path.join(uploadsDir, f.url.replace('/uploads/', ''));
+    let src = '';
+    // Tenta base64 do banco primeiro (sobrevive ao disco efêmero)
+    if (f.dadosBase64) {
+      src = f.dadosBase64;
+    } else {
+      const imgPath = path.join(uploadsDir, f.url.replace('/uploads/', ''));
+      src = imageToDataUri(imgPath) || '';
+    }
     return {
       number: String(i + 1).padStart(2, '0'),
-      src: imageToDataUri(imgPath) || '',
+      src,
       location: f.local || inspecao.setor?.nome || '',
       description: f.descricao || f.nome || '',
       risk: '',

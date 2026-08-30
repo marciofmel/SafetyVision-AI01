@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2 } from 'react-icons/fi';
+import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2, FiLoader } from 'react-icons/fi';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,7 @@ interface Relatorio {
 export default function RelatoriosTecnico() {
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   useEffect(() => {
     api.get('/relatorios').then(({ data }) => {
@@ -26,29 +27,42 @@ export default function RelatoriosTecnico() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('sv_token');
-    return { Authorization: `Bearer ${token}` };
+  const getToken = () => localStorage.getItem('sv_token') || '';
+
+  const getDownloadUrl = (id: string) => `/api/relatorios/${id}/download`;
+
+  const downloadPdf = async (r: Relatorio): Promise<Blob | null> => {
+    try {
+      const res = await fetch(getDownloadUrl(r.id), {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.blob();
+    } catch (err: any) {
+      console.error('Erro ao baixar PDF:', err);
+      return null;
+    }
   };
 
   const baixar = async (r: Relatorio) => {
-    try {
-      const res = await fetch(`/api/relatorios/${r.id}/download`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Erro ao baixar');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = r.nomeArquivo;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch {
-      toast.error('Erro ao baixar PDF');
+    setActionId(r.id);
+    toast.loading('Gerando PDF...', { id: `dl-${r.id}` });
+    const blob = await downloadPdf(r);
+    if (!blob) {
+      toast.error('Erro ao gerar PDF', { id: `dl-${r.id}` });
+      setActionId(null);
+      return;
     }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('PDF baixado!', { id: `dl-${r.id}` });
+    setActionId(null);
   };
 
   const excluir = async (r: Relatorio) => {
@@ -58,90 +72,87 @@ export default function RelatoriosTecnico() {
   };
 
   const compartilharWhatsApp = async (r: Relatorio) => {
+    setActionId(r.id);
+    toast.loading('Preparando PDF...', { id: `wa-${r.id}` });
+
+    const blob = await downloadPdf(r);
+    if (!blob) {
+      toast.error('Erro ao gerar PDF', { id: `wa-${r.id}` });
+      setActionId(null);
+      return;
+    }
+
     const texto = `Relatório SST - ${r.empresaNome} - Nota: ${r.notaConformidade ?? '---'}/100`;
 
-    // Abre WhatsApp IMEDIATAMENTE (síncrono) para não ser bloqueado
-    const link = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-    const win = window.open('', '_blank');
-
-    try {
-      const res = await fetch(`/api/relatorios/${r.id}/download`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Erro');
-      const blob = await res.blob();
-
-      // Tenta Web Share API (mobile)
-      if (navigator.share && navigator.canShare?.({ files: [new File([blob], r.nomeArquivo, { type: 'application/pdf' })] })) {
-        if (win) win.close();
-        await navigator.share({
-          title: 'Relatório SafetyVision',
-          text: texto,
-          files: [new File([blob], r.nomeArquivo, { type: 'application/pdf' })],
-        });
+    // Web Share API (funciona em mobile e Chrome desktop)
+    const file = new File([blob], r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`, { type: 'application/pdf' });
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: 'Relatório SafetyVision', text: texto, files: [file] });
+        toast.success('Compartilhado!', { id: `wa-${r.id}` });
+        setActionId(null);
         return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          toast.dismiss(`wa-${r.id}`);
+          setActionId(null);
+          return;
+        }
       }
-
-      // Fallback: baixa o PDF e mantém WhatsApp aberto
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = r.nomeArquivo;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-
-      if (win) {
-        win.location.href = link;
-      }
-      toast.success('PDF baixado! Anexe no WhatsApp.', { duration: 5000 });
-    } catch {
-      if (win) win.location.href = link;
-      toast.error('Erro ao baixar PDF. Envie manualmente.');
     }
+
+    // Fallback: baixa o PDF e abre WhatsApp com texto
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nPDF baixado. Anexe-o na conversa.')}`, '_blank');
+    toast.success('PDF baixado! Anexe no WhatsApp.', { id: `wa-${r.id}`, duration: 6000 });
+    setActionId(null);
   };
 
   const compartilharEmail = async (r: Relatorio) => {
+    setActionId(r.id);
+    toast.loading('Preparando PDF...', { id: `em-${r.id}` });
+
+    const blob = await downloadPdf(r);
+    if (!blob) {
+      toast.error('Erro ao gerar PDF', { id: `em-${r.id}` });
+      setActionId(null);
+      return;
+    }
+
+    // Baixa o PDF
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Abre Gmail com link de download no corpo
+    const downloadUrl = `${window.location.origin}/api/relatorios/${r.id}/download`;
     const assunto = encodeURIComponent(`Relatório SST - ${r.empresaNome}`);
     const corpo = encodeURIComponent(
-      `Segue em anexo o relatório de inspeção de segurança do trabalho.\n\n` +
+      `Prezado(a),\n\n` +
+      `Segue o relatório de inspeção de segurança do trabalho.\n\n` +
       `Empresa: ${r.empresaNome}\nSetor: ${r.setorNome}\n` +
       `Nota de Conformidade: ${r.notaConformidade ?? '---'}/100\n` +
       `Data: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}\n\n` +
-      `Atenciosamente,\nSafetyVision AI`
+      `O PDF está baixado no seu computador. Anexe-o a este email.\n` +
+      `Ou acesse: ${downloadUrl}\n\n` +
+      `Att,\nSafetyVision AI`
     );
-
-    // Abre Gmail IMEDIATAMENTE (síncrono)
-    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`;
-    const win = window.open('', '_blank');
-
-    try {
-      const res = await fetch(`/api/relatorios/${r.id}/download`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Erro');
-      const blob = await res.blob();
-
-      // Baixa o PDF
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = r.nomeArquivo;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-
-      // Redireciona janela para Gmail
-      if (win) {
-        win.location.href = gmailLink;
-      }
-      toast.success('PDF baixado! Anexe no Gmail.', { duration: 5000 });
-    } catch {
-      if (win) win.location.href = gmailLink;
-      toast.error('Erro ao baixar PDF. Envie manualmente.');
-    }
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${assunto}&body=${corpo}`, '_blank');
+    toast.success('PDF baixado! Anexe no Gmail.', { id: `em-${r.id}`, duration: 6000 });
+    setActionId(null);
   };
 
   const formatarTamanho = (bytes: number) => {
@@ -149,6 +160,8 @@ export default function RelatoriosTecnico() {
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
+
+  const isLoading = (id: string) => actionId === id;
 
   return (
     <div className="p-6">
@@ -196,14 +209,29 @@ export default function RelatoriosTecnico() {
                   {r.notaConformidade ?? '---'}/100
                 </span>
 
-                <button onClick={() => baixar(r)} className="rounded-lg border border-navy-200 p-2 text-navy-500 transition-all hover:bg-navy-50" title="Baixar PDF">
-                  <FiDownload size={16} />
+                <button
+                  onClick={() => baixar(r)}
+                  disabled={isLoading(r.id)}
+                  className="rounded-lg border border-navy-200 p-2 text-navy-500 transition-all hover:bg-navy-50 disabled:opacity-50"
+                  title="Baixar PDF"
+                >
+                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiDownload size={16} />}
                 </button>
-                <button onClick={() => compartilharWhatsApp(r)} className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition-all hover:bg-green-100" title="WhatsApp">
-                  <FiShare2 size={16} />
+                <button
+                  onClick={() => compartilharWhatsApp(r)}
+                  disabled={isLoading(r.id)}
+                  className="rounded-lg border border-green-200 bg-green-50 p-2 text-green-600 transition-all hover:bg-green-100 disabled:opacity-50"
+                  title="WhatsApp"
+                >
+                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
                 </button>
-                <button onClick={() => compartilharEmail(r)} className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition-all hover:bg-blue-100" title="Email">
-                  <FiFileText size={16} />
+                <button
+                  onClick={() => compartilharEmail(r)}
+                  disabled={isLoading(r.id)}
+                  className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 transition-all hover:bg-blue-100 disabled:opacity-50"
+                  title="Email"
+                >
+                  {isLoading(r.id) ? <FiLoader size={16} className="animate-spin" /> : <FiFileText size={16} />}
                 </button>
                 <button onClick={() => excluir(r)} className="rounded-lg border border-red-200 p-2 text-red-400 transition-all hover:bg-red-50 hover:text-red-600" title="Excluir">
                   <FiTrash2 size={16} />

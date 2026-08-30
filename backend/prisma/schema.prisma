@@ -174,14 +174,15 @@ model Inspecao {
 }
 
 model Midia {
-  id         String    @id @default(cuid())
-  inspecaoId String
-  inspecao   Inspecao  @relation(fields: [inspecaoId], references: [id])
-  tipo       String
-  url        String
-  nome       String
-  descricao  String?
-  createdAt  DateTime  @default(now())
+  id          String    @id @default(cuid())
+  inspecaoId  String
+  inspecao    Inspecao  @relation(fields: [inspecaoId], references: [id])
+  tipo        String
+  url         String
+  nome        String
+  descricao   String?
+  dadosBase64 String?   @db.Text
+  createdAt   DateTime  @default(now())
 }
 
 model Risco {
@@ -192,6 +193,7 @@ model Risco {
   descricao       String
   localIdentificado String
   imagemUrl       String?
+  imagemBase64    String?   @db.Text
   confianca       Float
   gravidade       String
   consequencias   String
@@ -212,6 +214,7 @@ model EpiViolacao {
   confianca  Float
   descricao  String?
   imagemUrl  String?
+  imagemBase64 String? @db.Text
   createdAt  DateTime  @default(now())
 }
 
