@@ -100,16 +100,10 @@ export default function RelatoriosTecnico() {
       }
     }
     const pdfUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(pdfUrl);
+    window.open(pdfUrl, '_blank');
     if (win) win.location.href = waLink;
     else window.open(waLink, '_blank');
-    toast.success('PDF baixado! Arraste para o WhatsApp no PC.', { id: `wa-${r.id}`, duration: 6000 });
+    toast('PDF aberto em nova aba — arraste para o WhatsApp no PC', { id: `wa-${r.id}` });
     setActionId(null);
   };
 
@@ -141,16 +135,10 @@ export default function RelatoriosTecnico() {
       }
     }
     const pdfUrl2 = URL.createObjectURL(blob);
-    const a2 = document.createElement('a');
-    a2.href = pdfUrl2;
-    a2.download = r.nomeArquivo || `relatorio-${r.empresaNome}.pdf`;
-    document.body.appendChild(a2);
-    a2.click();
-    document.body.removeChild(a2);
-    URL.revokeObjectURL(pdfUrl2);
+    window.open(pdfUrl2, '_blank');
     if (win) win.location.href = gmailLink;
     else window.open(gmailLink, '_blank');
-    toast.success('PDF baixado! Anexe no Gmail no PC.', { id: `em-${r.id}`, duration: 6000 });
+    toast('PDF aberto em nova aba — anexe no Gmail no PC', { id: `em-${r.id}` });
     setActionId(null);
   };
 
