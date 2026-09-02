@@ -22,6 +22,23 @@ function getUploadsDir(): string {
   return uploadsDir;
 }
 
+function getRelatoriosDir(): string {
+  const dir = path.join(getUploadsDir(), 'relatorios');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function salvarPdfDisco(pdfBuffer: Buffer, nomeArquivo: string): string | null {
+  try {
+    const filePath = path.join(getRelatoriosDir(), nomeArquivo);
+    fs.writeFileSync(filePath, pdfBuffer);
+    return filePath;
+  } catch (err) {
+    console.error('Erro ao salvar PDF no disco:', err);
+    return null;
+  }
+}
+
 // ═══════════════════════════════════════════
 // Gerar, salvar e retornar PDF
 // ═══════════════════════════════════════════
@@ -68,6 +85,9 @@ router.get('/:inspecaoId/gerar', async (req: AuthRequest, res) => {
 
     const i = inspecao as any;
     const nomeArquivo = `relatorio-${inspecao.id.slice(0, 8)}-${Date.now()}.pdf`;
+
+    // Salva o PDF no disco para persistência na plataforma
+    salvarPdfDisco(pdfBuffer, nomeArquivo);
 
     const existing = await prisma.relatorio.findFirst({
       where: { inspecaoId },

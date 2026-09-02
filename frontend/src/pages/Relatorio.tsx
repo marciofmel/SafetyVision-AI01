@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiShare2, FiEye, FiEyeOff, FiImage, FiFileText, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiDownload, FiArrowLeft, FiCheckCircle, FiShield, FiAlertTriangle, FiLoader, FiShare2, FiEye, FiEyeOff, FiImage, FiFileText, FiClock, FiMapPin, FiSend, FiMessageCircle, FiMail, FiX, FiLink, FiClipboard } from 'react-icons/fi';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -12,6 +12,8 @@ export default function Relatorio() {
   const [downloading, setDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [enviarModal, setEnviarModal] = useState(false);
+  const [relatorioSalvo, setRelatorioSalvo] = useState<any>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
   const pdfCacheRef = useRef<Blob | null>(null);
 
@@ -44,6 +46,10 @@ export default function Relatorio() {
     api.get(`/inspecoes/${id}`).then(({ data }) => {
       setInspecao(data);
       setLoading(false);
+      api.get('/relatorios').then(({ data: rels }) => {
+        const encontrado = (rels || []).find((r: any) => r.inspecaoId === id);
+        if (encontrado) setRelatorioSalvo(encontrado);
+      }).catch(() => {});
       fetch(`/api/relatorio/${id}/relatorio`, { headers: { Authorization: `Bearer ${getToken()}` } })
         .then(res => res.ok ? res.blob() : null)
         .then(blob => { if (blob && blob.type === 'application/pdf' && blob.size > 0) pdfCacheRef.current = blob; })
@@ -116,6 +122,38 @@ export default function Relatorio() {
     URL.revokeObjectURL(url);
     toast.success('PDF baixado — seu dispositivo não permite compartilhar direto', { id: 'share-pdf', duration: 5000 });
     setSharing(false);
+  };
+
+  const getLinkPublico = () => {
+    const base = window.location.origin;
+    const relId = relatorioSalvo?.id || id;
+    return `${base}/api/publico/${relId}/pdf`;
+  };
+
+  const montarMensagem = () => {
+    const nota = inspecao?.notaConformidade ?? 0;
+    const link = getLinkPublico();
+    return `Olá! Segue o relatório de segurança do trabalho (SafetyVision) da empresa ${inspecao?.empresa?.nome || '---'}.\n\n📊 Nota de conformidade: ${nota}/100\n📋 Riscos identificados: ${inspecao?.riscos?.length || 0}\n\n📎 Baixe o relatório completo: ${link}`;
+  };
+
+  const enviarWhatsApp = () => {
+    const texto = encodeURIComponent(montarMensagem());
+    window.open(`https://api.whatsapp.com/send?text=${texto}`, '_blank');
+  };
+
+  const enviarEmail = () => {
+    const subject = encodeURIComponent(`Relatório de Segurança - ${inspecao?.empresa?.nome || 'Inspeção'} (SafetyVision)`);
+    const body = encodeURIComponent(montarMensagem());
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const copiarLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getLinkPublico());
+      toast.success('Link copiado! Cole no WhatsApp ou e-mail.', { id: 'link-pdf' });
+    } catch {
+      toast.error('Não foi possível copiar o link', { id: 'link-pdf' });
+    }
   };
 
   if (loading) {
@@ -196,6 +234,11 @@ export default function Relatorio() {
             📤 Compartilhar PDF
           </button>
 
+          <button onClick={() => setEnviarModal(true)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-4 text-base font-bold text-white hover:bg-green-700">
+            <FiSend size={18} />
+            📨 Enviar por WhatsApp ou E-mail
+          </button>
+
           <button onClick={() => { setShowDetails(!showDetails); setTimeout(() => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-navy-200 bg-navy-50 py-3 text-sm font-bold text-navy-700 hover:bg-navy-100">
             {showDetails ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             {showDetails ? 'Fechar Detalhes' : 'Examinar Relatório'}
@@ -251,6 +294,62 @@ export default function Relatorio() {
           )}
         </div>
       </div>
+
+      {enviarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnviarModal(false)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-navy-900">Enviar relatório</h3>
+                <p className="text-sm text-navy-400">{inspecao?.empresa?.nome || 'Inspeção'}</p>
+              </div>
+              <button onClick={() => setEnviarModal(false)} className="rounded-lg p-2 text-navy-400 hover:bg-navy-50" title="Fechar">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <p className="mb-4 rounded-lg bg-navy-50 p-3 text-xs text-navy-500">
+              O PDF fica disponível na plataforma. Escolha como deseja enviar:
+            </p>
+
+            <div className="space-y-3">
+              <button onClick={() => { setEnviarModal(false); enviarWhatsApp(); }} className="flex w-full items-center gap-4 rounded-xl border border-green-200 bg-green-50 p-4 text-left transition hover:bg-green-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 text-white">
+                  <FiMessageCircle size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-green-800">Enviar via WhatsApp</p>
+                  <p className="text-xs text-green-600">Abre o WhatsApp com a mensagem e o link do relatório prontos</p>
+                </div>
+              </button>
+
+              <button onClick={() => { setEnviarModal(false); enviarEmail(); }} className="flex w-full items-center gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white">
+                  <FiMail size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-blue-800">Enviar via E-mail</p>
+                  <p className="text-xs text-blue-600">Abre seu e-mail com a mensagem e o link do relatório prontos</p>
+                </div>
+              </button>
+
+              <button onClick={() => copiarLink()} className="flex w-full items-center gap-4 rounded-xl border border-navy-200 bg-navy-50 p-4 text-left transition hover:bg-navy-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-navy-600 text-white">
+                  <FiClipboard size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-navy-800">Copiar link do PDF</p>
+                  <p className="text-xs text-navy-500">Copia o link direto do relatório para colar onde quiser</p>
+                </div>
+              </button>
+            </div>
+
+            <p className="mt-4 flex items-center gap-2 text-xs text-navy-400">
+              <FiLink size={12} /> Link do relatório: {getLinkPublico()}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

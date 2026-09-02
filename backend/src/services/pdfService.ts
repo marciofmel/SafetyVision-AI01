@@ -437,6 +437,27 @@ function getTemplate(): string {
 
 let _pdfLock: Promise<void> | null = null;
 
+function detectBrowserExecutable(): string | null {
+  // Prioridade: CHROME_PATH no .env → navegador local (Windows) → @sparticuz/chromium (Linux/Render)
+  const envPath = process.env.CHROME_PATH;
+  if (envPath && fs.existsSync(envPath)) return envPath;
+
+  const candidates = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
   while (_pdfLock) await _pdfLock;
   let release!: () => void;
@@ -450,12 +471,18 @@ export async function generateRelatorioPDF(data: RenderData): Promise<Buffer> {
     for (let attempt = 0; attempt < 3; attempt++) {
       let browser: any = null;
       try {
-        browser = await puppeteer.launch({
+        const localChromium = detectBrowserExecutable();
+        const launchOptions: any = {
           args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
           defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
           headless: chromium.headless,
-        });
+        };
+        if (localChromium) {
+          launchOptions.executablePath = localChromium;
+        } else {
+          launchOptions.executablePath = await chromium.executablePath();
+        }
+        browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
         const pdfBuffer = await page.pdf({

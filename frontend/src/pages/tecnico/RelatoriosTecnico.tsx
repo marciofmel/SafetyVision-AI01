@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2, FiLoader, FiEye } from 'react-icons/fi';
+import { FiDownload, FiTrash2, FiFileText, FiCalendar, FiHash, FiShare2, FiLoader, FiEye, FiSend, FiMessageCircle, FiMail, FiLink, FiX, FiClipboard } from 'react-icons/fi';
 import api from '../../api';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,7 @@ export default function RelatoriosTecnico() {
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [enviarRelatorio, setEnviarRelatorio] = useState<Relatorio | null>(null);
   const pdfCacheRef = useRef<Map<string, Blob>>(new Map());
 
   useEffect(() => {
@@ -119,6 +120,37 @@ export default function RelatoriosTecnico() {
     setRelatorios(prev => prev.filter(x => x.id !== r.id));
   };
 
+  const getLinkPublico = (r: Relatorio) => {
+    const base = window.location.origin;
+    return `${base}/api/publico/${r.id}/pdf`;
+  };
+
+  const montarMensagem = (r: Relatorio) => {
+    const nota = r.notaConformidade ?? 0;
+    const link = getLinkPublico(r);
+    return `Olá! Segue o relatório de segurança do trabalho (SafetyVision) da empresa ${r.empresaNome}.\n\n📊 Nota de conformidade: ${nota}/100\n📋 Riscos identificados: ${r.totalRiscos}\n📅 Gerado em: ${new Date(r.createdAt).toLocaleDateString('pt-BR')}\n\n📎 Baixe o relatório completo: ${link}`;
+  };
+
+  const enviarWhatsApp = (r: Relatorio) => {
+    const texto = encodeURIComponent(montarMensagem(r));
+    window.open(`https://api.whatsapp.com/send?text=${texto}`, '_blank');
+  };
+
+  const enviarEmail = (r: Relatorio) => {
+    const subject = encodeURIComponent(`Relatório de Segurança - ${r.empresaNome} (SafetyVision)`);
+    const body = encodeURIComponent(montarMensagem(r));
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const copiarLink = async (r: Relatorio) => {
+    try {
+      await navigator.clipboard.writeText(getLinkPublico(r));
+      toast.success('Link copiado! Cole no WhatsApp ou e-mail.', { id: `link-${r.id}` });
+    } catch {
+      toast.error('Não foi possível copiar o link', { id: `link-${r.id}` });
+    }
+  };
+
   const formatarTamanho = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -169,7 +201,7 @@ export default function RelatoriosTecnico() {
                   {r.notaConformidade ?? '---'}/100
                 </span>
 
-                <button onClick={() => navigate(`/relatorio/${r.inspecaoId}`)} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Ver Relatório">
+                <button onClick={() => navigate(`/tecnico/relatorio/${r.inspecaoId}`)} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Ver Relatório">
                   <FiEye size={16} />
                 </button>
                 <button onClick={() => baixar(r)} disabled={isLoading(r.id, 'dl')} className="rounded-lg border border-navy-200 p-2 text-navy-500 hover:bg-navy-50 disabled:opacity-50" title="Baixar PDF">
@@ -178,12 +210,71 @@ export default function RelatoriosTecnico() {
                 <button onClick={() => compartilhar(r)} disabled={isLoading(r.id, 'share')} className="rounded-lg bg-purple-600 p-2 text-white hover:bg-purple-700 disabled:opacity-50" title="Compartilhar">
                   {isLoading(r.id, 'share') ? <FiLoader size={16} className="animate-spin" /> : <FiShare2 size={16} />}
                 </button>
+                <button onClick={() => setEnviarRelatorio(r)} className="rounded-lg bg-green-600 p-2 text-white hover:bg-green-700" title="Enviar via WhatsApp ou E-mail">
+                  <FiSend size={16} />
+                </button>
                 <button onClick={() => excluir(r)} className="rounded-lg border border-red-200 p-2 text-red-400 hover:bg-red-50 hover:text-red-600" title="Excluir">
                   <FiTrash2 size={16} />
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {enviarRelatorio && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnviarRelatorio(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-navy-900">Enviar relatório</h3>
+                <p className="text-sm text-navy-400">{enviarRelatorio.empresaNome}</p>
+              </div>
+              <button onClick={() => setEnviarRelatorio(null)} className="rounded-lg p-2 text-navy-400 hover:bg-navy-50" title="Fechar">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <p className="mb-4 rounded-lg bg-navy-50 p-3 text-xs text-navy-500">
+              O PDF fica disponível na plataforma. Escolha como deseja enviar:
+            </p>
+
+            <div className="space-y-3">
+              <button onClick={() => { enviarWhatsApp(enviarRelatorio); setEnviarRelatorio(null); }} className="flex w-full items-center gap-4 rounded-xl border border-green-200 bg-green-50 p-4 text-left transition hover:bg-green-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 text-white">
+                  <FiMessageCircle size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-green-800">Enviar via WhatsApp</p>
+                  <p className="text-xs text-green-600">Abre o WhatsApp com a mensagem e o link do relatório prontos</p>
+                </div>
+              </button>
+
+              <button onClick={() => { enviarEmail(enviarRelatorio); setEnviarRelatorio(null); }} className="flex w-full items-center gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left transition hover:bg-blue-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white">
+                  <FiMail size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-blue-800">Enviar via E-mail</p>
+                  <p className="text-xs text-blue-600">Abre seu e-mail com a mensagem e o link do relatório prontos</p>
+                </div>
+              </button>
+
+              <button onClick={() => copiarLink(enviarRelatorio)} className="flex w-full items-center gap-4 rounded-xl border border-navy-200 bg-navy-50 p-4 text-left transition hover:bg-navy-100">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-navy-600 text-white">
+                  <FiClipboard size={22} />
+                </div>
+                <div>
+                  <p className="font-semibold text-navy-800">Copiar link do PDF</p>
+                  <p className="text-xs text-navy-500">Copia o link direto do relatório para colar onde quiser</p>
+                </div>
+              </button>
+            </div>
+
+            <p className="mt-4 flex items-center gap-2 text-xs text-navy-400">
+              <FiLink size={12} /> Link do relatório: {getLinkPublico(enviarRelatorio)}
+            </p>
+          </div>
         </div>
       )}
     </div>

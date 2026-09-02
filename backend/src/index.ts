@@ -30,6 +30,7 @@ import asoRoutes from './routes/aso';
 import cipaRoutes from './routes/cipa';
 import alertasRoutes from './routes/alertas';
 import relatoriosSalvosRoutes from './routes/relatorios';
+import relatorioPublicoRoutes from './routes/relatorioPublico';
 
 const app = express();
 const PORT = process.env.PORT || 5173;
@@ -64,6 +65,9 @@ app.use('/api/asos', authMiddleware, asoRoutes);
 app.use('/api/cipa', authMiddleware, cipaRoutes);
 app.use('/api/alertas', authMiddleware, alertasRoutes);
 app.use('/api/relatorios', authMiddleware, relatoriosSalvosRoutes);
+
+// Rota pública para compartilhamento de relatórios (WhatsApp/Email/link) — SEM auth
+app.use('/api/publico', relatorioPublicoRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'SafetyVision AI' }));
 

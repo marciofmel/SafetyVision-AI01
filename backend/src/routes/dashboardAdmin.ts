@@ -1,9 +1,8 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function requireAdmin(userId: string) {
   return prisma.user.findUnique({ where: { id: userId } }).then(u => u?.cargo === 'Admin' || u?.cargo === 'Administrador');

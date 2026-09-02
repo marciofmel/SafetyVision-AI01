@@ -1,9 +1,8 @@
 import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prisma';
 import { AuthRequest } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 function generateLaudoHtml(laudo: any, empresa: any, inspecao: any, riscos: any[], midias: any[]): string {
   const riscosHtml = riscos.map((r, i) => `
